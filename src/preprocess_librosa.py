@@ -2,11 +2,14 @@ import os
 import librosa
 from joblib import Parallel, delayed
 import json
-import config_file
 import argparse
 import pickle
 import numpy as np
 from pathlib import Path
+import yaml
+from argparse import Namespace
+
+config_file = Namespace(**yaml.load(open('config_file.yaml')))
 
 DEBUG = False
 
