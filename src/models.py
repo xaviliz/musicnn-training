@@ -55,7 +55,7 @@ def model_number(x, is_training, config):
         midend_features_list = midend.dense_cnns(frontend_features, is_training, 64)
         midend_features = tf.concat(midend_features_list, 2)  # dense connection: concatenate features from previous layers
 
-        return backend.temporal_pooling(midend_features, is_training, 50, 200, type='globalpool')
+        return backend.temporal_pooling(midend_features, is_training, int(config['num_classes_dataset']), 200, type='globalpool')
         # 787k params | ROC-AUC: 90.69 | PR-AUC: 38.44 | VAL-COST: 0.1304
 
     elif config['model_number'] == 12:

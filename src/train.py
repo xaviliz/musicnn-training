@@ -7,10 +7,13 @@ import pescador
 import numpy as np
 import tensorflow as tf
 import models
-import config_file, shared
+import shared
 import pickle
 from tensorflow.python.framework import ops
+import yaml
+from argparse import Namespace
 
+config_file = Namespace(**yaml.load(open('config_file.yaml')))
 
 def tf_define_model_and_cost(config):
     # tensorflow: define the model
@@ -74,6 +77,8 @@ if __name__ == '__main__':
     config = config_file.config_train[args.configuration]
 
     # load config parameters used in 'preprocess_librosa.py',
+    config['audio_representation_folder'] = "audio_representation/%s__%s/" % (config_file.config_preprocess['mtgdb_spec']['identifier'],
+                                                                              config_file.config_preprocess['mtgdb_spec']['type'])
     config_json = config_file.DATA_FOLDER + config['audio_representation_folder'] + 'config.json'
     with open(config_json, "r") as f:
         params = json.load(f)
@@ -88,15 +93,15 @@ if __name__ == '__main__':
         config['yInput'] = config['audio_rep']['n_mels']
 
     # load audio representation paths
-    file_index = config_file.DATA_FOLDER + config['audio_representation_folder'] + 'index.tsv'
+    file_index = config_file.DATA_FOLDER + 'index.tsv'
     [audio_repr_paths, id2audio_repr_path] = shared.load_id2path(file_index)
 
     # load training data
-    file_ground_truth_train = config_file.DATA_FOLDER + config['gt_train']
+    file_ground_truth_train = config['gt_train']
     [ids_train, id2gt_train] = shared.load_id2gt(file_ground_truth_train)
 
     # load validation data
-    file_ground_truth_val = config_file.DATA_FOLDER + config['gt_val']
+    file_ground_truth_val = config['gt_val']
     [ids_val, id2gt_val] = shared.load_id2gt(file_ground_truth_val)
 
     # set output

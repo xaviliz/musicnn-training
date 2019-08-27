@@ -45,7 +45,7 @@ config_preprocess:
 
 config_train:
   spec:
-    audio_representation_folder: 'audio_representation/'
+    audio_representation_folder: audio_representation/
     batch_size: 32
     epochs: 600
     gt_train: %(gt_train)s
@@ -55,7 +55,7 @@ config_train:
     model_number: 11
     n_frames: 187
     name_run: ''
-    num_classes_dataset: 50
+    num_classes_dataset: %(num_classes_dataset)s
     optimizer: Adam
     pad_short: repeat-pad
     param_train_sampling: 1
