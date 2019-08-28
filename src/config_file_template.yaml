@@ -50,6 +50,7 @@ config_train:
     epochs: 600
     gt_train: %(gt_train)s
     gt_val: %(gt_val)s
+    gt_test: %(gt_test)s
     learning_rate: 0.001
     load_model: null
     model_number: 11
@@ -64,3 +65,5 @@ config_train:
     train_sampling: random
     val_batch_size: 32
     weight_decay: 1.0e-05
+    n_folds: %(n_folds)s
+    fold: %(fold)s

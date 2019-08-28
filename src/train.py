@@ -170,6 +170,11 @@ if __name__ == '__main__':
     fy.write('Epoch\ttrain_cost\tval_cost\tepoch_time\tlearing_rate\n')
     fy.close()
 
+    # automate the evaluation process
+    experiment_id_file = os.path.join(config_file.DATA_FOLDER, 'experiment_id')
+    with open(experiment_id_file, 'w') as f:
+        f.write(str(experiment_id))
+
     # training
     k_patience = 0
     cost_best_model = np.Inf
