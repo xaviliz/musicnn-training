@@ -1,7 +1,7 @@
 import argparse
 import json
 import pescador
-import shared, train
+import shared, train_tl
 import numpy as np
 import tensorflow as tf
 from tqdm import tqdm
@@ -19,9 +19,10 @@ FOLD = config_file.config_train['spec']['fold']
 
 def evaluation(batch_dispatcher, tf_vars, array_cost, pred_array, id_array):
 
-    [sess, normalized_y, cost, x, y_, is_train] = tf_vars
+    [sess, normalized_y, cost, x, y_, is_training_source, is_training_target] = tf_vars
     for batch in tqdm(batch_dispatcher):
-        pred, cost_pred = sess.run([normalized_y, cost], feed_dict={x: batch['X'], y_: batch['Y'], is_train: False})
+        pred, cost_pred = sess.run([normalized_y, cost], feed_dict={x: batch['X'], y_: batch['Y'],
+                                                                    is_training_source: False, is_training_target: False})
         if not array_cost: # if array_cost is empty, is the first iteration
             pred_array = pred
             id_array = batch['ID']
@@ -55,14 +56,14 @@ if __name__ == '__main__':
 
     for model in models:
 
-        experiment_folder = config_file.MODEL_FOLDER + 'experiments/' + str(model) + '/'
+        experiment_folder = config_file.DATA_FOLDER + 'experiments/' + str(model) + '/'
         config = json.load(open(experiment_folder + 'config.json'))
         print('Experiment: ' + str(model))
         print('\n' + str(config))
 
         # pescador: define (finite, batched & parallel) streamer
         pack = [config, 'overlap_sampling', config['n_frames'], False]
-        streams = [pescador.Streamer(train.data_gen, id, id2audio_repr_path[id], id2gt[id], pack) for id in ids]
+        streams = [pescador.Streamer(train_tl.data_gen, id, id2audio_repr_path[id], id2gt[id], pack) for id in ids]
         mux_stream = pescador.ChainMux(streams, mode='exhaustive')
         batch_streamer = pescador.Streamer(pescador.buffer_stream, mux_stream, buffer_size=TEST_BATCH_SIZE, partial=True)
         batch_streamer = pescador.ZMQStreamer(batch_streamer)
@@ -71,12 +72,12 @@ if __name__ == '__main__':
         fuckin_graph = tf.Graph()
         with fuckin_graph.as_default():
             sess = tf.Session()
-            [x, y_, is_train, y, normalized_y, cost] = train.tf_define_model_and_cost(config)
+            [x, y_, is_training_source, is_training_target, y, normalized_y, cost, cnn3, model_vars] = train_tl.tf_define_model_and_cost(config)
             sess.run(tf.global_variables_initializer())
             saver = tf.train.Saver()
             results_folder = experiment_folder
             saver.restore(sess, results_folder)
-            tf_vars = [sess, normalized_y, cost, x, y_, is_train]
+            tf_vars = [sess, normalized_y, cost, x, y_, is_training_source, is_training_target]
             array_cost, pred_array, id_array = evaluation(batch_streamer, tf_vars, array_cost, pred_array, id_array)
             sess.close()
 
@@ -94,7 +95,7 @@ if __name__ == '__main__':
     print('PR-AUC: ' + str(pr_auc))
     print('Acc: ' + str(acc))
     # store experimental results
-    to = open(config_file.MODEL + 'results_{}'.format(FOLD), 'w')
+    to = open(config_file.DATA_FOLDER + 'results_{}'.format(FOLD), 'w')
     to.write('Experiment: ' + str(models))
     to.write('\nROC AUC: ' + str(roc_auc))
     to.write('\nPR AUC: ' + str(pr_auc))
@@ -103,7 +104,7 @@ if __name__ == '__main__':
     to.close()
 
     predictions = {id: list(pred.astype('float64')) for id, pred in zip(ids, y_pred)}
-    predictions_file = config_file.MODEL_FOLDER + 'predictions_{}.json'.format(FOLD)
+    predictions_file = config_file.DATA_FOLDER + 'predictions_{}.json'.format(FOLD)
 
     with open(predictions_file, 'w') as f:
         json.dump(predictions, f)

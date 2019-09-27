@@ -1,7 +1,6 @@
 DATASET: %(dataset)s
 
 DATA_FOLDER: %(data_folder)s
-MODEL_FOLDER: %(model_folder)s
 
 config_preprocess:
   msd_spec:
@@ -55,7 +54,7 @@ config_train:
     gt_test: %(gt_test)s
     learning_rate: 0.001
     load_model: null
-    model_number: 2
+    model_number: 12
     n_frames: 187
     name_run: ''
     num_classes_dataset: %(num_classes_dataset)s

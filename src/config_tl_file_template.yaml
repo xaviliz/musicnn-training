@@ -1,7 +1,6 @@
 DATASET: %(dataset)s
 
 DATA_FOLDER: %(data_folder)s
-MODEL_FOLDER: %(model_folder)s
 
 config_preprocess:
   msd_spec:
@@ -49,13 +48,13 @@ config_train:
   spec:
     audio_representation_folder: audio_representation/
     batch_size: 32
-    epochs: 600
+    epochs: 100
     gt_train: %(gt_train)s
     gt_val: %(gt_val)s
     gt_test: %(gt_test)s
     learning_rate: 0.001
-    load_model: null
-    model_number: 2
+    load_model: %(load_model)s
+    model_number: 11
     n_frames: 187
     name_run: ''
     num_classes_dataset: %(num_classes_dataset)s

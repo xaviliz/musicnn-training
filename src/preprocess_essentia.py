@@ -8,24 +8,35 @@ import numpy as np
 from pathlib import Path
 import yaml
 from argparse import Namespace
+from essentiamel import essentia_melspectrogram
+from tqdm import tqdm
 
-config_file = Namespace(**yaml.load(open('config_file.yaml')))
+config_file = Namespace(**yaml.load(open('config_file.yaml'), Loader=yaml.SafeLoader))
 
 DEBUG = False
 
-def compute_audio_repr(audio_file, audio_repr_file):
 
-    audio, sr = librosa.load(audio_file, sr=config['resample_sr'])
+def compute_audio_repr(audio_file, audio_repr_file, force=False):
+    if not force:
+        if os.path.exists(audio_repr_file):
+            print('{} exists. skipping!'.format(audio_file))
+            return 0
 
     if config['type'] == 'waveform':
+        audio, sr = librosa.load(audio_file, sr=config['resample_sr'])
         audio_repr = audio
         audio_repr = np.expand_dims(audio_repr, axis=1)
 
     elif config['spectrogram_type'] == 'mel':
-        audio_repr = librosa.feature.melspectrogram(y=audio, sr=sr,
-                                                    hop_length=config['hop'],
-                                                    n_fft=config['n_fft'],
-                                                    n_mels=config['n_mels']).T
+        audio_repr = essentia_melspectrogram(audio_file,
+                                             sampleRate=config['resample_sr'],
+                                             frameSize=config['n_fft'],
+                                             hopSize=config['hop'],
+                                             warpingFormula='slaneyMel',
+                                             window='hann',
+                                             normalize='unit_tri',
+                                             numberBands=config['n_mels'])
+
     # Compute length
     print(audio_repr.shape)
     length = audio_repr.shape[0]
@@ -68,7 +79,7 @@ def process_files(files):
 
     if DEBUG:
         print('WARNING: Parallelization is not used!')
-        for index in range(0, len(files)):
+        for index in tqdm(range(0, len(files))):
             do_process(files, index)
 
     else:

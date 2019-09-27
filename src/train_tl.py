@@ -6,12 +6,14 @@ import random
 import pescador
 import numpy as np
 import tensorflow as tf
-import models
+import models_transfer_learning as models
 import shared
 import pickle
 from tensorflow.python.framework import ops
 import yaml
 from argparse import Namespace
+from restore_layers import RESTORE_LAYERS
+import sys
 
 config_file = Namespace(**yaml.load(open('config_file.yaml'), Loader=yaml.SafeLoader))
 
@@ -21,11 +23,15 @@ def tf_define_model_and_cost(config):
     with tf.name_scope('model'):
         x = tf.compat.v1.placeholder(tf.float32, [None, config['xInput'], config['yInput']])
         y_ = tf.compat.v1.placeholder(tf.float32, [None, config['num_classes_dataset']])
-        is_train = tf.compat.v1.placeholder(tf.bool)
-        y = models.model_number(x, is_train, config)
+        is_training_source = tf.compat.v1.placeholder(tf.bool)
+        is_training_target = tf.compat.v1.placeholder(tf.bool)
+        # y = models.model_number(x, is_train, config)
+        y, timbral, temporal, cnn1, cnn2, cnn3, mean_pool, max_pool, penultimate = models.define_model(x, is_training_source, is_training_target, 'MTT_musicnn', config['num_classes_dataset'])
+
         normalized_y = tf.nn.sigmoid(y)
         print(normalized_y.get_shape())
-    print('Number of parameters of the model: ' + str(shared.count_params(tf.trainable_variables()))+'\n')
+    print('Number of parameters of the model: ' + str(shared.count_params(tf.trainable_variables())) + '\n')
+
 
     # tensorflow: define cost function
     with tf.name_scope('metrics'):
@@ -33,16 +39,16 @@ def tf_define_model_and_cost(config):
         cost = tf.losses.sigmoid_cross_entropy(multi_class_labels=y_, logits=y)
         if config['weight_decay'] != None:
             vars = tf.trainable_variables()
-            lossL2 = tf.add_n([ tf.nn.l2_loss(v) for v in vars if 'kernel' in v.name ])
+            lossL2 = tf.add_n([ tf.nn.l2_loss(v) for v in vars if 'kernel' in v.name])
             cost = cost + config['weight_decay']*lossL2
             print('L2 norm, weight decay!')
 
     # print all trainable variables, for debugging
     model_vars = [v for v in tf.global_variables()]
-    for variables in model_vars:
-        print(variables)
+    for var in model_vars:
+        print(var)
 
-    return [x, y_, is_train, y, normalized_y, cost]
+    return [x, y_, is_training_source, is_training_target, y, normalized_y, cost, cnn3, model_vars]
 
 
 def data_gen(id, audio_repr_path, gt, pack):
@@ -101,8 +107,8 @@ if __name__ == '__main__':
     config = config_file.config_train[args.configuration]
 
     # load config parameters used in 'preprocess_librosa.py',
-    config['audio_representation_folder'] = "%s__%s/" % (config_file.config_preprocess['mtgdb_spec']['identifier'],
-                                                         config_file.config_preprocess['mtgdb_spec']['type'])
+    config['audio_representation_folder'] = "audio_representation/%s__%s/" % (config_file.config_preprocess['mtgdb_spec']['identifier'],
+                                                                              config_file.config_preprocess['mtgdb_spec']['type'])
     config_json = config_file.DATA_FOLDER + config['audio_representation_folder'] + 'config.json'
     with open(config_json, "r") as f:
         params = json.load(f)
@@ -137,14 +143,14 @@ if __name__ == '__main__':
 
     # save experimental settings
     experiment_id = str(shared.get_epoch_time()) + args.configuration
-    model_folder = config_file.MODEL_FOLDER + 'experiments/' + str(experiment_id) + '/'
+    model_folder = config_file.DATA_FOLDER + 'experiments/' + str(experiment_id) + '/'
     if not os.path.exists(model_folder):
         os.makedirs(model_folder)
     json.dump(config, open(model_folder + 'config.json', 'w'))
     print('\nConfig file saved: ' + str(config))
 
     # tensorflow: define model and cost
-    [x, y_, is_train, y, normalized_y, cost] = tf_define_model_and_cost(config)
+    [x, y_, is_training_source, is_training_target, y, normalized_y, cost, cnn3, model_vars] = tf_define_model_and_cost(config)
 
     # tensorflow: define optimizer
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS) # needed for batchnorm
@@ -184,10 +190,14 @@ if __name__ == '__main__':
 
     # tensorflow: create a session to run the tensorflow graph
     sess.run(tf.global_variables_initializer())
-    saver = tf.train.Saver()
     if config['load_model'] != None: # restore model weights from previously saved model
+        saver = tf.compat.v1.train.Saver(var_list=model_vars[:-2])
         saver.restore(sess, config['load_model']) # end with /!
         print('Pre-trained model loaded!')
+
+        # After restoring make it aware of the rest of the variables
+        # saver.var_list = model_vars
+    saver = tf.compat.v1.train.Saver()
 
     # writing headers of the train_log.tsv
     fy = open(model_folder + 'train_log.tsv', 'a')
@@ -195,7 +205,7 @@ if __name__ == '__main__':
     fy.close()
 
     # automate the evaluation process
-    experiment_id_file = os.path.join(config_file.MODEL_FOLDER, 'experiment_id_{}'.format(config['fold']))
+    experiment_id_file = os.path.join(config_file.DATA_FOLDER, 'experiment_id_{}'.format(config['fold']))
     with open(experiment_id_file, 'w') as f:
         f.write(str(experiment_id))
 
@@ -212,14 +222,14 @@ if __name__ == '__main__':
             for train_batch in train_batch_streamer:
                 tf_start = time.time()
                 _, train_cost = sess.run([train_step, cost],
-                                         feed_dict={x: train_batch['X'], y_: train_batch['Y'], lr: tmp_learning_rate, is_train: True})
+                                         feed_dict={x: train_batch['X'], y_: train_batch['Y'], lr: tmp_learning_rate, is_training_source: False, is_training_target: True})
                 array_train_cost.append(train_cost)
 
         # validation
         array_val_cost = []
         for val_batch in val_batch_streamer:
             val_cost = sess.run([cost],
-                                feed_dict={x: val_batch['X'], y_: val_batch['Y'], is_train: False})
+                                feed_dict={x: val_batch['X'], y_: val_batch['Y'], is_training_source: False, is_training_target: False})
             array_val_cost.append(val_cost)
 
         # Keep track of average loss of the epoch
