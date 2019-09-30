@@ -49,7 +49,7 @@ def build_musicnn(x, is_training_source, is_training_target, num_classes, num_fi
     mean_pool = tf.squeeze(mean_pool, [2])
     max_pool = tf.squeeze(max_pool, [2])
 
-    return logits, timbral, temporal, cnn1, cnn2, cnn3, mean_pool, max_pool, penultimate
+    return logits
 
 
 def frontend(x, is_training, yInput, num_filt, type):
@@ -248,4 +248,4 @@ def vgg(x, is_training_source, is_training_target, num_classes, num_filters=32):
     output = tf.compat.v1.layers.dense(inputs=do_pool5,
                             activation=None,
                             units=num_classes)
-    return output, pool1, pool2, pool3, pool4, pool5
+    return output
