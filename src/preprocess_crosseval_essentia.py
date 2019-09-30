@@ -20,7 +20,7 @@ DEBUG = False
 def compute_audio_repr(audio_file, audio_repr_file, lib, force=False):
     if not force:
         if os.path.exists(audio_repr_file):
-            print('{} exists. skipping!'.format(audio_file))
+            print('{} exists. skipping!'.format(audio_repr_file))
             return 0
 
     base_dir = '/'.join(audio_repr_file.split('/')[:-1])
@@ -71,15 +71,11 @@ def do_process(files, index, lib):
         length = compute_audio_repr(audio_file, audio_repr_file, lib)
         # index.tsv writing
         fw = open(os.path.join(data_dir, "index.tsv"), "a")
-        fw.write("%s\t%s\t%s\n" % (id, audio_repr_file, audio_file))
+        fw.write("%s\t%s\n" % (id, audio_repr_file))
         fw.close()
         print(str(index) + '/' + str(len(files)) + ' Computed: %s' % audio_file)
 
     except Exception as e:
-        ferrors = open(os.path.join(data_dir, "index.tsv"), "a")
-        ferrors.write(audio_file + "\n")
-        ferrors.write(str(e))
-        ferrors.close()
         print('Error computing audio representation: ', audio_file)
         print(str(e))
 
@@ -123,8 +119,9 @@ if __name__ == '__main__':
         id, path = line.strip().split("\t")
 
         audio_repr = path[:path.rfind(".")] + ".pk"  # .npy or .pk
-        audio_repr = audio_repr.replace(index_basedir + '/', '')
+        audio_repr = audio_repr.replace(index_basedir, '')
         audio_repr = os.path.join(data_dir, audio_repr)
+
         files_to_convert.append((id, path, audio_repr))
 
     process_files(files_to_convert, lib)
