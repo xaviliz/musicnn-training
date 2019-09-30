@@ -11,6 +11,7 @@ from argparse import Namespace
 
 config_file = Namespace(**yaml.load(open('config_file.yaml')))
 
+MODEL_FOLDER = config_file.MODEL_FOLDER
 DATA_FOLDER = config_file.DATA_FOLDER
 N_FOLDS = config_file.config_train['spec']['n_folds']
 
@@ -56,7 +57,7 @@ if __name__ == '__main__':
 
     for i in range(N_FOLDS):
         groundtruth_file = os.path.join(DATA_FOLDER, 'gt_test_{}.csv'.format(i))
-        estimations_file = os.path.join(DATA_FOLDER, 'predictions_{}.json'.format(i))
+        estimations_file = os.path.join(MODEL_FOLDER, 'predictions_{}.json'.format(i))
 
         with open(estimations_file) as f:
             estimations.update(json.load(f))
@@ -82,7 +83,7 @@ if __name__ == '__main__':
 
     y_true, y_pred = zip(*[(groundtruth[i], estimations[i]) for i in ids])
 
-    results_file = os.path.join(DATA_FOLDER, 'results_whole')
+    results_file = os.path.join(MODEL_FOLDER, 'results_whole')
     score_predictions(list(y_true),
                       list(y_pred),
                       results_file)

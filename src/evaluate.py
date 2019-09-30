@@ -94,7 +94,7 @@ if __name__ == '__main__':
     print('PR-AUC: ' + str(pr_auc))
     print('Acc: ' + str(acc))
     # store experimental results
-    to = open(config_file.MODEL + 'results_{}'.format(FOLD), 'w')
+    to = open(config_file.MODEL_FOLDER + 'results_{}'.format(FOLD), 'w')
     to.write('Experiment: ' + str(models))
     to.write('\nROC AUC: ' + str(roc_auc))
     to.write('\nPR AUC: ' + str(pr_auc))
