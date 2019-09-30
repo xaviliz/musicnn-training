@@ -71,7 +71,7 @@ if __name__ == '__main__':
         fuckin_graph = tf.Graph()
         with fuckin_graph.as_default():
             sess = tf.Session()
-            [x, y_, is_train, y, normalized_y, cost] = train.tf_define_model_and_cost(config)
+            [x, y_, is_train, y, normalized_y, cost, model_vars] = train.tf_define_model_and_cost(config)
             sess.run(tf.global_variables_initializer())
             saver = tf.train.Saver()
             results_folder = experiment_folder

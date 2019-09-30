@@ -33,24 +33,6 @@ def score_predictions(y_true, y_pred, output_file):
     to.close()
 
 if __name__ == '__main__':
-    # parser = argparse.ArgumentParser()
-
-    # parser.add_argument('groundtruth_file')
-    # parser.add_argument('estimations_file')
-    # parser.add_argument('results_file')
-
-    # args = parser.parse_args()
-
-    # groundtruth_file = args.groundtruth_file
-    # estimations_file = args.estimations_file
-    # results_file = args.results_file
-
-    # with open(groundtruth_file) as f:
-    #     groundtruth = json.load(f)
-
-    # with open(estimations_file) as f:
-    #     estimations = json.load(f)
-
     ids = []
     groundtruth = dict()
     estimations = dict()
