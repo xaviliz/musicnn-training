@@ -6,7 +6,7 @@ import random
 import pescador
 import numpy as np
 import tensorflow as tf
-import models
+
 import shared
 import pickle
 from tensorflow.python.framework import ops
@@ -22,7 +22,16 @@ def tf_define_model_and_cost(config):
         x = tf.compat.v1.placeholder(tf.float32, [None, config['xInput'], config['yInput']])
         y_ = tf.compat.v1.placeholder(tf.float32, [None, config['num_classes_dataset']])
         is_train = tf.compat.v1.placeholder(tf.bool)
-        y = models.model_number(x, is_train, config)
+
+        # choose between transfer learning or fully trainable models
+        if config['load_model'] is not None:
+            import models_transfer_learning as models
+            y = models.define_model(x, is_train, config['model_number'],
+                                    config['num_classes_dataset'])
+        else:
+            import models
+            y = models.model_number(x, is_train, config)
+
         normalized_y = tf.nn.sigmoid(y)
         print(normalized_y.get_shape())
     print('Number of parameters of the model: ' + str(shared.count_params(tf.trainable_variables()))+'\n')
@@ -34,7 +43,7 @@ def tf_define_model_and_cost(config):
         if config['weight_decay'] != None:
             vars = tf.trainable_variables()
             lossL2 = tf.add_n([ tf.nn.l2_loss(v) for v in vars if 'kernel' in v.name ])
-            cost = cost + config['weight_decay']*lossL2
+            cost = cost + config['weight_decay'] * lossL2
             print('L2 norm, weight decay!')
 
     # print all trainable variables, for debugging
@@ -42,7 +51,7 @@ def tf_define_model_and_cost(config):
     for variables in model_vars:
         print(variables)
 
-    return [x, y_, is_train, y, normalized_y, cost]
+    return [x, y_, is_train, y, normalized_y, cost, model_vars]
 
 
 def data_gen(id, audio_repr_path, gt, pack):
@@ -144,7 +153,7 @@ if __name__ == '__main__':
     print('\nConfig file saved: ' + str(config))
 
     # tensorflow: define model and cost
-    [x, y_, is_train, y, normalized_y, cost] = tf_define_model_and_cost(config)
+    [x, y_, is_train, y, normalized_y, cost, model_vars] = tf_define_model_and_cost(config)
 
     # tensorflow: define optimizer
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS) # needed for batchnorm
@@ -185,9 +194,14 @@ if __name__ == '__main__':
     # tensorflow: create a session to run the tensorflow graph
     sess.run(tf.global_variables_initializer())
     saver = tf.train.Saver()
-    if config['load_model'] != None: # restore model weights from previously saved model
-        saver.restore(sess, config['load_model']) # end with /!
+    if config['load_model'] is not None:  # restore model weights from previously saved model
+        saver = tf.compat.v1.train.Saver(var_list=model_vars[:-2])
+        saver.restore(sess, config['load_model'])  # end with /!
         print('Pre-trained model loaded!')
+
+    # After restoring make it aware of the rest of the variables
+    # saver.var_list = model_vars
+    saver = tf.compat.v1.train.Saver()
 
     # writing headers of the train_log.tsv
     fy = open(model_folder + 'train_log.tsv', 'a')
@@ -212,14 +226,19 @@ if __name__ == '__main__':
             for train_batch in train_batch_streamer:
                 tf_start = time.time()
                 _, train_cost = sess.run([train_step, cost],
-                                         feed_dict={x: train_batch['X'], y_: train_batch['Y'], lr: tmp_learning_rate, is_train: True})
+                                         feed_dict={x: train_batch['X'],
+                                                    y_: train_batch['Y'],
+                                                    lr: tmp_learning_rate,
+                                                    is_train: True})
                 array_train_cost.append(train_cost)
 
         # validation
         array_val_cost = []
         for val_batch in val_batch_streamer:
             val_cost = sess.run([cost],
-                                feed_dict={x: val_batch['X'], y_: val_batch['Y'], is_train: False})
+                                feed_dict={x: val_batch['X'],
+                                           y_: val_batch['Y'],
+                                           is_train: False})
             array_val_cost.append(val_cost)
 
         # Keep track of average loss of the epoch

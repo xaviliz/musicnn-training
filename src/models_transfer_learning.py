@@ -5,13 +5,19 @@ import tensorflow as tf
 #tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
-def define_model(x, is_training_source, is_training_target, model, num_classes):
+def define_model(x, is_training, model_num, num_classes):
+    if model_num == 2:
+        model = 'MTT_vgg'
+    elif model_num == 11:
+        model = 'MTT_musicnn'
+    else:
+        raise Exception('model number not contemplated for transfer learning')
 
     if model == 'MTT_musicnn':
-        return build_musicnn(x, is_training_source, is_training_target, num_classes, num_filt_midend=64, num_units_backend=200)
+        return build_musicnn(x, is_training, num_classes, num_filt_midend=64, num_units_backend=200)
 
     elif model == 'MTT_vgg':
-        return vgg(x, is_training_source, is_training_target, num_classes, 128)
+        return vgg(x, is_training, num_classes, 128)
 
     elif model == 'MSD_musicnn':
         return build_musicnn(x, is_training, num_classes, num_filt_midend=64, num_units_backend=200)
@@ -26,20 +32,21 @@ def define_model(x, is_training_source, is_training_target, model, num_classes):
         raise ValueError('Model not implemented!')
 
 
-def build_musicnn(x, is_training_source, is_training_target, num_classes, num_filt_frontend=1.6, num_filt_midend=64, num_units_backend=200):
+def build_musicnn(x, is_training, num_classes, num_filt_frontend=1.6, num_filt_midend=64, num_units_backend=200):
 
     ### front-end ### musically motivated CNN
-    frontend_features_list = frontend(x, is_training_source, 96, num_filt=1.6, type='7774timbraltemporal')
+    non_trainable = False
+    frontend_features_list = frontend(x, non_trainable, 96, num_filt=1.6, type='7774timbraltemporal')
     # concatnate features coming from the front-end
     frontend_features = tf.concat(frontend_features_list, 2)
 
     ### mid-end ### dense layers
-    midend_features_list = midend(frontend_features, is_training_source, num_filt_midend)
+    midend_features_list = midend(frontend_features, non_trainable, num_filt_midend)
     # dense connection: concatnate features coming from different layers of the front- and mid-end
     midend_features = tf.concat(midend_features_list, 2)
 
     ### back-end ### temporal pooling
-    logits, penultimate, mean_pool, max_pool = backend(midend_features, is_training_target, num_classes, num_units_backend, type='globalpool_dense')
+    logits, penultimate, mean_pool, max_pool = backend(midend_features, is_training, num_classes, num_units_backend, type='globalpool_dense')
 
     # [extract features] temporal and timbral features from the front-end
     timbral = tf.concat([frontend_features_list[0], frontend_features_list[1]], 2)
@@ -190,9 +197,11 @@ def backend(feature_map, is_training, num_classes, output_units, type):
     return logits, bn_dense, mean_pool, max_pool
 
 
-def vgg(x, is_training_source, is_training_target, num_classes, num_filters=32):
+def vgg(x, is_training, num_classes, num_filters=32):
+    non_trainable = False
+
     input_layer = tf.expand_dims(x, 3)
-    bn_input = tf.compat.v1.layers.batch_normalization(input_layer, training=is_training_source)
+    bn_input = tf.compat.v1.layers.batch_normalization(input_layer, training=non_trainable)
 
     conv1 = tf.compat.v1.layers.conv2d(inputs=bn_input,
                              filters=num_filters,
@@ -200,51 +209,51 @@ def vgg(x, is_training_source, is_training_target, num_classes, num_filters=32):
                              padding='same',
                              activation=tf.nn.relu,
                              name='1CNN')
-    bn_conv1 = tf.compat.v1.layers.batch_normalization(conv1, training=is_training_source)
+    bn_conv1 = tf.compat.v1.layers.batch_normalization(conv1, training=non_trainable)
     pool1 = tf.compat.v1.layers.max_pooling2d(inputs=bn_conv1, pool_size=[4, 1], strides=[2, 2])
 
-    do_pool1 = tf.compat.v1.layers.dropout(pool1, rate=0.25, training=is_training_source)
+    do_pool1 = tf.compat.v1.layers.dropout(pool1, rate=0.25, training=non_trainable)
     conv2 = tf.compat.v1.layers.conv2d(inputs=do_pool1,
                              filters=num_filters,
                              kernel_size=[3, 3],
                              padding='same',
                              activation=tf.nn.relu,
                              name='2CNN')
-    bn_conv2 = tf.compat.v1.layers.batch_normalization(conv2, training=is_training_source)
+    bn_conv2 = tf.compat.v1.layers.batch_normalization(conv2, training=non_trainable)
     pool2 = tf.compat.v1.layers.max_pooling2d(inputs=bn_conv2, pool_size=[2, 2], strides=[2, 2])
 
-    do_pool2 = tf.compat.v1.layers.dropout(pool2, rate=0.25, training=is_training_source)
+    do_pool2 = tf.compat.v1.layers.dropout(pool2, rate=0.25, training=non_trainable)
     conv3 = tf.compat.v1.layers.conv2d(inputs=do_pool2,
                              filters=num_filters,
                              kernel_size=[3, 3],
                              padding='same',
                              activation=tf.nn.relu,
                              name='3CNN')
-    bn_conv3 = tf.compat.v1.layers.batch_normalization(conv3, training=is_training_source)
+    bn_conv3 = tf.compat.v1.layers.batch_normalization(conv3, training=non_trainable)
     pool3 = tf.compat.v1.layers.max_pooling2d(inputs=bn_conv3, pool_size=[2, 2], strides=[2, 2])
 
-    do_pool3 = tf.compat.v1.layers.dropout(pool3, rate=0.25, training=is_training_source)
+    do_pool3 = tf.compat.v1.layers.dropout(pool3, rate=0.25, training=non_trainable)
     conv4 = tf.compat.v1.layers.conv2d(inputs=do_pool3,
                              filters=num_filters,
                              kernel_size=[3, 3],
                              padding='same',
                              activation=tf.nn.relu,
                              name='4CNN')
-    bn_conv4 = tf.compat.v1.layers.batch_normalization(conv4, training=is_training_source)
+    bn_conv4 = tf.compat.v1.layers.batch_normalization(conv4, training=non_trainable)
     pool4 = tf.compat.v1.layers.max_pooling2d(inputs=bn_conv4, pool_size=[2, 2], strides=[2, 2])
 
-    do_pool4 = tf.compat.v1.layers.dropout(pool4, rate=0.25, training=is_training_source)
-    conv5 = tf.compat.v1.layers.conv2d(inputs=do_pool4, 
+    do_pool4 = tf.compat.v1.layers.dropout(pool4, rate=0.25, training=non_trainable)
+    conv5 = tf.compat.v1.layers.conv2d(inputs=do_pool4,
                              filters=num_filters, 
                              kernel_size=[3, 3], 
                              padding='same', 
                              activation=tf.nn.relu,
                              name='5CNN')
-    bn_conv5 = tf.compat.v1.layers.batch_normalization(conv5, training=is_training_target)
+    bn_conv5 = tf.compat.v1.layers.batch_normalization(conv5, training=is_training)
     pool5 = tf.compat.v1.layers.max_pooling2d(inputs=bn_conv5, pool_size=[4, 4], strides=[4, 4])
 
     flat_pool5 = tf.compat.v1.layers.flatten(pool5)
-    do_pool5 = tf.compat.v1.layers.dropout(flat_pool5, rate=0.5, training=is_training_target)
+    do_pool5 = tf.compat.v1.layers.dropout(flat_pool5, rate=0.5, training=is_training)
     output = tf.compat.v1.layers.dense(inputs=do_pool5,
                             activation=None,
                             units=num_classes)
