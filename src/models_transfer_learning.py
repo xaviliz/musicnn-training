@@ -190,9 +190,9 @@ def backend(feature_map, is_training, num_classes, output_units, type):
     return logits, bn_dense, mean_pool, max_pool
 
 
-def vgg(x, is_training, num_classes, num_filters=32):
+def vgg(x, is_training_source, is_training_target, num_classes, num_filters=32):
     input_layer = tf.expand_dims(x, 3)
-    bn_input = tf.compat.v1.layers.batch_normalization(input_layer, training=is_training)
+    bn_input = tf.compat.v1.layers.batch_normalization(input_layer, training=is_training_source)
 
     conv1 = tf.compat.v1.layers.conv2d(inputs=bn_input,
                              filters=num_filters,
@@ -200,52 +200,52 @@ def vgg(x, is_training, num_classes, num_filters=32):
                              padding='same',
                              activation=tf.nn.relu,
                              name='1CNN')
-    bn_conv1 = tf.compat.v1.layers.batch_normalization(conv1, training=is_training)
+    bn_conv1 = tf.compat.v1.layers.batch_normalization(conv1, training=is_training_source)
     pool1 = tf.compat.v1.layers.max_pooling2d(inputs=bn_conv1, pool_size=[4, 1], strides=[2, 2])
 
-    do_pool1 = tf.compat.v1.layers.dropout(pool1, rate=0.25, training=is_training)
+    do_pool1 = tf.compat.v1.layers.dropout(pool1, rate=0.25, training=is_training_source)
     conv2 = tf.compat.v1.layers.conv2d(inputs=do_pool1,
                              filters=num_filters,
                              kernel_size=[3, 3],
                              padding='same',
                              activation=tf.nn.relu,
                              name='2CNN')
-    bn_conv2 = tf.compat.v1.layers.batch_normalization(conv2, training=is_training)
+    bn_conv2 = tf.compat.v1.layers.batch_normalization(conv2, training=is_training_source)
     pool2 = tf.compat.v1.layers.max_pooling2d(inputs=bn_conv2, pool_size=[2, 2], strides=[2, 2])
 
-    do_pool2 = tf.compat.v1.layers.dropout(pool2, rate=0.25, training=is_training)
+    do_pool2 = tf.compat.v1.layers.dropout(pool2, rate=0.25, training=is_training_source)
     conv3 = tf.compat.v1.layers.conv2d(inputs=do_pool2,
                              filters=num_filters,
                              kernel_size=[3, 3],
                              padding='same',
                              activation=tf.nn.relu,
                              name='3CNN')
-    bn_conv3 = tf.compat.v1.layers.batch_normalization(conv3, training=is_training)
+    bn_conv3 = tf.compat.v1.layers.batch_normalization(conv3, training=is_training_source)
     pool3 = tf.compat.v1.layers.max_pooling2d(inputs=bn_conv3, pool_size=[2, 2], strides=[2, 2])
 
-    do_pool3 = tf.compat.v1.layers.dropout(pool3, rate=0.25, training=is_training)
+    do_pool3 = tf.compat.v1.layers.dropout(pool3, rate=0.25, training=is_training_source)
     conv4 = tf.compat.v1.layers.conv2d(inputs=do_pool3,
                              filters=num_filters,
                              kernel_size=[3, 3],
                              padding='same',
                              activation=tf.nn.relu,
                              name='4CNN')
-    bn_conv4 = tf.compat.v1.layers.batch_normalization(conv4, training=is_training)
+    bn_conv4 = tf.compat.v1.layers.batch_normalization(conv4, training=is_training_source)
     pool4 = tf.compat.v1.layers.max_pooling2d(inputs=bn_conv4, pool_size=[2, 2], strides=[2, 2])
 
-    do_pool4 = tf.compat.v1.layers.dropout(pool4, rate=0.25, training=is_training)
+    do_pool4 = tf.compat.v1.layers.dropout(pool4, rate=0.25, training=is_training_source)
     conv5 = tf.compat.v1.layers.conv2d(inputs=do_pool4, 
                              filters=num_filters, 
                              kernel_size=[3, 3], 
                              padding='same', 
                              activation=tf.nn.relu,
                              name='5CNN')
-    bn_conv5 = tf.compat.v1.layers.batch_normalization(conv5, training=is_training)
+    bn_conv5 = tf.compat.v1.layers.batch_normalization(conv5, training=is_training_target)
     pool5 = tf.compat.v1.layers.max_pooling2d(inputs=bn_conv5, pool_size=[4, 4], strides=[4, 4])
 
     flat_pool5 = tf.compat.v1.layers.flatten(pool5)
-    do_pool5 = tf.compat.v1.layers.dropout(flat_pool5, rate=0.5, training=is_training)
+    do_pool5 = tf.compat.v1.layers.dropout(flat_pool5, rate=0.5, training=is_training_target)
     output = tf.compat.v1.layers.dense(inputs=do_pool5,
                             activation=None,
                             units=num_classes)
-    return output, pool1, pool2, pool3, pool4, pool5   
+    return output, pool1, pool2, pool3, pool4, pool5
