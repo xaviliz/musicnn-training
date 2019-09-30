@@ -26,7 +26,15 @@ def tf_define_model_and_cost(config):
         is_training_source = tf.compat.v1.placeholder(tf.bool)
         is_training_target = tf.compat.v1.placeholder(tf.bool)
         # y = models.model_number(x, is_train, config)
-        y, timbral, temporal, cnn1, cnn2, cnn3, mean_pool, max_pool, penultimate = models.define_model(x, is_training_source, is_training_target, 'MTT_musicnn', config['num_classes_dataset'])
+
+        model_number = config['model_number']
+
+        if model_number == 2:
+            model_name = 'MTT_vgg'
+        if model_number == 11:
+            model_name = 'MTT_musicnn'
+
+        y = models.define_model(x, is_training_source, is_training_target, model_name, config['num_classes_dataset'])
 
         normalized_y = tf.nn.sigmoid(y)
         print(normalized_y.get_shape())
@@ -48,7 +56,7 @@ def tf_define_model_and_cost(config):
     for var in model_vars:
         print(var)
 
-    return [x, y_, is_training_source, is_training_target, y, normalized_y, cost, cnn3, model_vars]
+    return [x, y_, is_training_source, is_training_target, y, normalized_y, cost, model_vars]
 
 
 def data_gen(id, audio_repr_path, gt, pack):
@@ -107,8 +115,8 @@ if __name__ == '__main__':
     config = config_file.config_train[args.configuration]
 
     # load config parameters used in 'preprocess_librosa.py',
-    config['audio_representation_folder'] = "audio_representation/%s__%s/" % (config_file.config_preprocess['mtgdb_spec']['identifier'],
-                                                                              config_file.config_preprocess['mtgdb_spec']['type'])
+    config['audio_representation_folder'] = "%s__%s/" % (config_file.config_preprocess['mtgdb_spec']['identifier'],
+                                                         config_file.config_preprocess['mtgdb_spec']['type'])
     config_json = config_file.DATA_FOLDER + config['audio_representation_folder'] + 'config.json'
     with open(config_json, "r") as f:
         params = json.load(f)
@@ -150,7 +158,7 @@ if __name__ == '__main__':
     print('\nConfig file saved: ' + str(config))
 
     # tensorflow: define model and cost
-    [x, y_, is_training_source, is_training_target, y, normalized_y, cost, cnn3, model_vars] = tf_define_model_and_cost(config)
+    [x, y_, is_training_source, is_training_target, y, normalized_y, cost, model_vars] = tf_define_model_and_cost(config)
 
     # tensorflow: define optimizer
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS) # needed for batchnorm
