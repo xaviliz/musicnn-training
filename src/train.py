@@ -40,6 +40,10 @@ def tf_define_model_and_cost(config):
     with tf.name_scope('metrics'):
         # if you use softmax_cross_entropy be sure that the output of your model has linear units!
         cost = tf.losses.sigmoid_cross_entropy(multi_class_labels=y_, logits=y)
+
+        if config['model_number'] == 20:
+           config['weight_decay'] = None
+
         if config['weight_decay'] != None:
             vars = tf.trainable_variables()
             lossL2 = tf.add_n([ tf.nn.l2_loss(v) for v in vars if 'kernel' in v.name ])
@@ -60,6 +64,7 @@ def data_gen(id, audio_repr_path, gt, pack):
 
     # load audio representation -> audio_repr shape: NxM
     audio_rep = pickle.load(open(config_file.DATA_FOLDER + audio_repr_path, 'rb'))
+
     if config['pre_processing'] == 'logEPS':
         audio_rep = np.log10(audio_rep + np.finfo(float).eps)
     elif  config['pre_processing'] == 'logC':
@@ -116,6 +121,14 @@ if __name__ == '__main__':
     with open(config_json, "r") as f:
         params = json.load(f)
     config['audio_rep'] = params
+
+    # audioset features are already compressed
+    if config['model_number'] == 20:
+        print('updating configuration for audioset model')
+
+        config['pre_processing'] = ''
+        config['n_frames'] = 96
+        config['audio_rep']['n_mels'] = 64
 
     # set patch parameters
     if config['audio_rep']['type'] == 'waveform':

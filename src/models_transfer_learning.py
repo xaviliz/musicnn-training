@@ -10,6 +10,8 @@ def define_model(x, is_training, model_num, num_classes):
         model = 'MTT_vgg'
     elif model_num == 11:
         model = 'MTT_musicnn'
+    elif model_num == 20:
+        model = 'audioset_vgg'
     else:
         raise Exception('model number not contemplated for transfer learning')
 
@@ -27,6 +29,9 @@ def define_model(x, is_training, model_num, num_classes):
 
     elif model == 'MSD_vgg':
         return vgg(x, is_training, num_classes, 128)
+
+    elif model == 'audioset_vgg':
+        return define_vggish_slim(x, is_training, num_classes)
 
     else:
         raise ValueError('Model not implemented!')
@@ -258,3 +263,79 @@ def vgg(x, is_training, num_classes, num_filters=32):
                             activation=None,
                             units=num_classes)
     return output
+
+
+def define_vggish_slim(x, is_training, num_classes):
+    """Defines the VGGish TensorFlow model.
+    All ops are created in the current default graph, under the scope 'vggish/'.
+    The input is a placeholder named 'vggish/input_features' of type float32 and
+    shape [batch_size, num_frames, num_bands] where batch_size is variable and
+    num_frames and num_bands are constants, and [num_frames, num_bands] represents
+    a log-mel-scale spectrogram patch covering num_bands frequency bands and
+    num_frames time frames (where each frame step is usually 10ms). This is
+    produced by computing the stabilized log(mel-spectrogram + params.LOG_OFFSET).
+    The output is an op named 'vggish/embedding' which produces the activations of
+    a 128-D embedding layer, which is usually the penultimate layer when used as
+    part of a full model with a final classifier layer.
+    Args:
+    training: If true, all parameters are marked trainable.
+    Returns:
+    The op 'vggish/embeddings'.
+    """
+
+    slim = tf.contrib.slim
+
+    # Architectural constants.
+    EMBEDDING_SIZE = 128  # Size of embedding layer.
+    NUM_FRAMES = 96  # Frames in input mel-spectrogram patch.
+    NUM_BANDS = 64  # Frequency bands in input mel-spectrogram patch.
+    INIT_STDDEV = 0.01  # Standard deviation used to initialize weights.
+
+    # Defaults:
+    # - All weights are initialized to N(0, INIT_STDDEV).
+    # - All biases are initialized to 0.
+    # - All activations are ReLU.
+    # - All convolutions are 3x3 with stride 1 and SAME padding.
+    # - All max-pools are 2x2 with stride 2 and SAME padding.
+
+    with slim.arg_scope([slim.conv2d, slim.fully_connected],
+                        weights_initializer=tf.truncated_normal_initializer(
+                            stddev=INIT_STDDEV),
+                        biases_initializer=tf.zeros_initializer(),
+                        activation_fn=tf.nn.relu,
+                        trainable=False), \
+        slim.arg_scope([slim.conv2d],
+                        kernel_size=[3, 3], stride=1, padding='SAME'), \
+        slim.arg_scope([slim.max_pool2d],
+                        kernel_size=[2, 2], stride=2, padding='SAME'), \
+        tf.variable_scope('vggish'):
+
+        # Reshape to 4-D so that we can convolve a batch with conv2d().
+        net = tf.reshape(x, [-1, NUM_FRAMES, NUM_BANDS, 1])
+
+        # The VGG stack of alternating convolutions and max-pools.
+        net = slim.conv2d(net, 64, scope='conv1')
+        net = slim.max_pool2d(net, scope='pool1')
+        net = slim.conv2d(net, 128, scope='conv2')
+        net = slim.max_pool2d(net, scope='pool2')
+        net = slim.repeat(net, 2, slim.conv2d, 256, scope='conv3')
+        net = slim.max_pool2d(net, scope='pool3')
+        net = slim.repeat(net, 2, slim.conv2d, 512, scope='conv4')
+        net = slim.max_pool2d(net, scope='pool4')
+
+        # Flatten before entering fully-connected layers
+        net = slim.flatten(net)
+        net = slim.repeat(net, 2, slim.fully_connected, 4096, scope='fc1')
+        # The embedding layer.
+        embeddings = slim.fully_connected(net, EMBEDDING_SIZE, scope='fc2')
+
+    #num_units = 100
+    #fc = slim.fully_connected(net, num_units, training=is_training)
+
+    # Add a classifier layer at the end, consisting of parallel logistic
+    # classifiers, one per class. This allows for multi-class tasks.
+    logits = slim.fully_connected(
+        embeddings, num_classes, activation_fn=None, scope='logits')
+    tf.sigmoid(logits, name='prediction')
+
+    return tf.identity(logits, name='logits')
