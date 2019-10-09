@@ -76,7 +76,8 @@ def do_process(files, index, lib):
         print(str(index) + '/' + str(len(files)) + ' Computed: %s' % audio_file)
 
     except Exception as e:
-        print('Error computing audio representation: ', audio_file)
+        print('Error computing audio representation: ', audio_repr_file)
+        print('Source file: ', audio_file)
         print(str(e))
 
 
@@ -84,7 +85,7 @@ def process_files(files, lib):
     if DEBUG:
         print('WARNING: Parallelization is not used!')
         for index in tqdm(range(0, len(files))):
-            do_process(files, index)
+            do_process(files, index, lib)
     else:
         Parallel(n_jobs=config['num_processing_units'])(
             delayed(do_process)(files, index, lib) for index in range(0, len(files)))
@@ -104,6 +105,10 @@ if __name__ == '__main__':
     data_dir = args.data_dir
     lib = args.lib
 
+    fw = open(os.path.join(data_dir, "index.tsv"), "w")
+    fw.write('')
+    fw.close()
+
     # set audio representations folder
     if not os.path.exists(data_dir):
         os.makedirs(data_dir)
@@ -117,7 +122,6 @@ if __name__ == '__main__':
     f = open(index_file)
     for line in f.readlines():
         id, path = line.strip().split("\t")
-
         audio_repr = path[:path.rfind(".")] + ".pk"  # .npy or .pk
         audio_repr = audio_repr.replace(index_basedir, '')
         audio_repr = os.path.join(data_dir, audio_repr)

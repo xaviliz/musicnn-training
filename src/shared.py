@@ -36,7 +36,7 @@ def load_id2path(index_file):
     return paths, id2path
 
 
-def average_predictions(pred_array, id_array, ids, id2gt):
+def average_predictions(pred_array, id_array, ids, id2gt=None):
     # averaging probabilities -> one could also do majority voting
     print('Averaging predictions')
     y_pred = []
@@ -56,10 +56,15 @@ def average_predictions(pred_array, id_array, ids, id2gt):
                 print('{} skipped because it contains neg infs'.format(id))
                 continue
             y_pred.append(avg)
-            y_true.append(id2gt[id])
+            if id2gt:
+                y_true.append(id2gt[id])
         except:
             print(id)
-    return y_true, y_pred
+
+    if id2gt:
+        return y_true, y_pred
+    else:
+        return y_pred
 
 
 def auc_with_aggergated_predictions(y_true, y_pred):
