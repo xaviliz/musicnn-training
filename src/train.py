@@ -41,12 +41,9 @@ def tf_define_model_and_cost(config):
         # if you use softmax_cross_entropy be sure that the output of your model has linear units!
         cost = tf.losses.sigmoid_cross_entropy(multi_class_labels=y_, logits=y)
 
-        if config['model_number'] == 20:
-           config['weight_decay'] = None
-
         if config['weight_decay'] != None:
             vars = tf.trainable_variables()
-            lossL2 = tf.add_n([ tf.nn.l2_loss(v) for v in vars if 'kernel' in v.name ])
+            lossL2 = tf.add_n([ tf.nn.l2_loss(v) for v in vars if 'kernel' or 'weights' in v.name ])
             cost = cost + config['weight_decay'] * lossL2
             print('L2 norm, weight decay!')
 
@@ -208,7 +205,10 @@ if __name__ == '__main__':
     sess.run(tf.global_variables_initializer())
     saver = tf.train.Saver()
     if config['load_model'] is not None:  # restore model weights from previously saved model
-        saver = tf.compat.v1.train.Saver(var_list=model_vars[:-2])
+        if config['model_number'] == 20:
+            saver = tf.compat.v1.train.Saver(var_list=model_vars[:-4])
+        else:
+            saver = tf.compat.v1.train.Saver(var_list=model_vars[:-2])
         saver.restore(sess, config['load_model'])  # end with /!
         print('Pre-trained model loaded!')
 
