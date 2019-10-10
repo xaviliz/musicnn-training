@@ -329,13 +329,13 @@ def define_vggish_slim(x, is_training, num_classes):
         # The embedding layer.
         embeddings = slim.fully_connected(net, EMBEDDING_SIZE, scope='fc2')
 
-    #num_units = 100
-    #fc = slim.fully_connected(net, num_units, training=is_training)
+    num_units = 100
+    fc = slim.fully_connected(embeddings, num_units)
 
     # Add a classifier layer at the end, consisting of parallel logistic
     # classifiers, one per class. This allows for multi-class tasks.
     logits = slim.fully_connected(
-        embeddings, num_classes, activation_fn=None, scope='logits')
+        fc, num_classes, activation_fn=None, scope='logits')
     tf.sigmoid(logits, name='prediction')
 
     return tf.identity(logits, name='logits')
