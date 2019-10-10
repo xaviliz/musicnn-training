@@ -44,6 +44,19 @@ def compute_audio_repr(audio_file, audio_repr_file, lib, force=False):
                                                     hop_length=config['hop'],
                                                     n_fft=config['n_fft'],
                                                     n_mels=config['n_mels']).T
+    elif lib == 'audioset':
+        import librosa
+        import audiosetmel
+
+        audio, sr = librosa.load(audio_file, sr=config['resample_sr'])
+        audio_repr = audiosetmel.log_mel_spectrogram(audio,
+                                                  audio_sample_rate=16000,
+                                                  log_offset=0.01,
+                                                  window_length_secs=0.025,
+                                                  hop_length_secs=0.010,
+                                                  num_mel_bins=64,
+                                                  lower_edge_hertz=125,
+                                                  upper_edge_hertz=7500)
     else:
         raise Exception('no signal processing lib defined!')
 
@@ -96,7 +109,7 @@ if __name__ == '__main__':
     parser.add_argument('index_file', help='index file')
     parser.add_argument('index_basedir', help='grountruth file')
     parser.add_argument('data_dir', help='grountruth file')
-    parser.add_argument('lib', help='dsp lib', choices=['essentia', 'librosa'])
+    parser.add_argument('lib', help='dsp lib', choices=['essentia', 'librosa', 'audioset'])
 
     args = parser.parse_args()
 
