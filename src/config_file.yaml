@@ -1,0 +1,71 @@
+DATASET: gender
+
+DATA_FOLDER: /home/palonso/data/ccetl/librosa/gender/
+MODEL_FOLDER: /home/palonso/models/ccetl/musicnn_mtt_tl_mtgdbmodels/gender/
+
+config_preprocess:
+  msd_spec:
+    audio_folder: /home/jpons/audio/msd/
+    hop: 256
+    identifier: msd
+    index_file: index/msd/index_msd.tsv
+    machine_i: 0
+    n_fft: 512
+    n_machines: 1
+    n_mels: 96
+    num_processing_units: 20
+    resample_sr: 16000
+    spectrogram_type: mel
+    type: time-freq
+  mtt_spec:
+    audio_folder: /home/jpons/audio/mtt/
+    hop: 256
+    identifier: mtt
+    index_file: index/mtt/index_mtt.tsv
+    machine_i: 0
+    n_fft: 512
+    n_machines: 1
+    n_mels: 96
+    num_processing_units: 20
+    resample_sr: 16000
+    spectrogram_type: mel
+    type: time-freq
+  mtgdb_spec:
+    audio_folder: /mnt/mtgdb-audio/stable/gender/audio/mp3/
+    hop: 256
+    identifier: gender
+    index_audio_file: index_audio.tsv
+    index_repr_file: index_repr.tsv
+    machine_i: 0
+    n_fft: 512
+    n_machines: 1
+    n_mels: 96
+    num_processing_units: 20
+    resample_sr: 16000
+    spectrogram_type: mel
+    type: time-freq
+
+config_train:
+  spec:
+    audio_representation_folder: audio_representation/
+    batch_size: 32
+    epochs: 200
+    gt_train: /home/palonso/data/ccetl/librosa/gender/gt_train_whole.csv
+    gt_val: /home/palonso/data/ccetl/librosa/gender/gt_val_whole.csv
+    gt_test: /home/palonso/data/ccetl/librosa/gender/gt_test_whole.csv
+    learning_rate: 0.001
+    load_model: /home/palonso/reps/mtgdb-models/src/musicnn_training/weights/MTT_musicnn/
+    model_number: 11
+    n_frames: 187
+    name_run: ''
+    num_classes_dataset: 2
+    optimizer: Adam
+    pad_short: repeat-pad
+    param_train_sampling: 1
+    patience: 75
+    pre_processing: logC
+    train_sampling: random
+    val_batch_size: 32
+    weight_decay: 1.0e-05
+    n_folds: 5
+    fold: whole
