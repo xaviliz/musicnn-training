@@ -94,4 +94,4 @@ def compute_accuracy(y_true, y_pred):
     y_true_idx = np.argmax(y_true, axis=1)
     y_pred_idx = np.argmax(y_pred, axis=1)
 
-    return metrics.accuracy_score(y_true_idx, y_pred_idx)
+    return metrics.balanced_accuracy_score(y_true_idx, y_pred_idx)

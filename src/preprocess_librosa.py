@@ -83,7 +83,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     config = config_file.config_preprocess[args.configurationID]
 
-    config['audio_representation_folder'] = "audio_representation/%s__%s/" % (config['identifier'], config['type'])
+    config['audio_representation_folder'] = "%s__%s/" % (config['identifier'], config['type'])
     # set audio representations folder
     if not os.path.exists(config_file.DATA_FOLDER + config['audio_representation_folder']):
         os.makedirs(config_file.DATA_FOLDER + config['audio_representation_folder'])

@@ -16,14 +16,25 @@ DATA_FOLDER = config_file.DATA_FOLDER
 N_FOLDS = config_file.config_train['spec']['n_folds']
 
 
-def score_predictions(y_true, y_pred, output_file):
+def score_predictions(y_true, y_pred, folds, folds_gt, output_file):
     roc_auc, pr_auc = shared.auc_with_aggergated_predictions(y_true, y_pred)
     acc = shared.compute_accuracy(y_true, y_pred)
+
+    accs = []
+    for i in range(len(folds)):
+        y_true_fold = folds_gt[i]
+        y_pred_fold = list(folds[i].values())
+        accs.append(shared.compute_accuracy(y_true_fold, y_pred_fold))
 
     # print experimental results
     print('ROC-AUC: ' + str(roc_auc))
     print('PR-AUC: ' + str(pr_auc))
-    print('Acc: ' + str(acc))
+    print('Balanced Acc: ' + str(acc))
+
+    print('Balanced Acc STD: ' + str(np.std(accs)))
+    print('latext format:')
+    print('{:.2f}\\pm{:.2f}'.format(acc, np.std(accs)))
+    print('-' * 20)
     # store experimental results
     to = open(output_file, 'w')
     to.write('\nROC AUC: ' + str(roc_auc))
@@ -32,17 +43,21 @@ def score_predictions(y_true, y_pred, output_file):
     to.write('\n')
     to.close()
 
+
 if __name__ == '__main__':
     ids = []
     groundtruth = dict()
     estimations = dict()
 
-    for i in range(N_FOLDS):
+    folds = []
+    for i in range(4):
         groundtruth_file = os.path.join(DATA_FOLDER, 'gt_test_{}.csv'.format(i))
         estimations_file = os.path.join(MODEL_FOLDER, 'predictions_{}.json'.format(i))
 
         with open(estimations_file) as f:
-            estimations.update(json.load(f))
+            fold = json.load(f)
+            folds.append(fold)
+            estimations.update(fold)
 
         ids_fold, gt_fold = shared.load_id2gt(groundtruth_file)
 
@@ -65,7 +80,17 @@ if __name__ == '__main__':
 
     y_true, y_pred = zip(*[(groundtruth[i], estimations[i]) for i in ids])
 
+    fold_gt = []
+    fold_est = []
+    for i, fold in enumerate(folds):
+        keys = ([i for i in fold.keys() if i in groundtruth.keys()])
+
+        fold_est.append({k: v for k, v in fold.items() if k in keys})
+        fold_gt.append([groundtruth[k] for k in keys])
+
     results_file = os.path.join(MODEL_FOLDER, 'results_whole')
     score_predictions(list(y_true),
                       list(y_pred),
+                      fold_est,
+                      fold_gt,
                       results_file)
