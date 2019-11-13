@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
     for model in models:
 
-        experiment_folder = config_file.MODEL_FOLDER + 'experiments/' + str(model) + '/'
+        experiment_folder = config_file.DATA_FOLDER + 'experiments/' + str(model) + '/'
         config = json.load(open(experiment_folder + 'config.json'))
         print('Experiment: ' + str(model))
         print('\n' + str(config))
@@ -95,7 +95,7 @@ if __name__ == '__main__':
     print('PR-AUC: ' + str(pr_auc))
     print('Acc: ' + str(acc))
     # store experimental results
-    to = open(config_file.MODEL_FOLDER + 'results_{}'.format(FOLD), 'w')
+    to = open(config_file.DATA_FOLDER + 'results_{}'.format(FOLD), 'w')
     to.write('Experiment: ' + str(models))
     to.write('\nROC AUC: ' + str(roc_auc))
     to.write('\nPR AUC: ' + str(pr_auc))
@@ -104,7 +104,7 @@ if __name__ == '__main__':
     to.close()
 
     predictions = {id: list(pred.astype('float64')) for id, pred in zip(ids, y_pred)}
-    predictions_file = config_file.MODEL_FOLDER + 'predictions_{}.json'.format(FOLD)
+    predictions_file = config_file.DATA_FOLDER + 'predictions_{}.json'.format(FOLD)
 
     with open(predictions_file, 'w') as f:
         json.dump(predictions, f)
