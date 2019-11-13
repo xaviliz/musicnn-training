@@ -186,16 +186,19 @@ def backend(feature_map, is_training, num_classes, output_units, type):
 
     # penultimate dense layer
     flat_pool = tf.compat.v1.layers.flatten(tmp_pool)
-    flat_pool = tf.compat.v1.layers.batch_normalization(flat_pool, training=is_training)
-    flat_pool_dropout = tf.compat.v1.layers.dropout(flat_pool, rate=0.5, training=is_training)
+    flat_pool = tf.compat.v1.layers.batch_normalization(flat_pool, training=False)
+    flat_pool_dropout = tf.compat.v1.layers.dropout(flat_pool, rate=0.5, training=False)
     dense = tf.compat.v1.layers.dense(inputs=flat_pool_dropout,
                             units=output_units,
                             activation=tf.nn.relu)
-    bn_dense = tf.compat.v1.layers.batch_normalization(dense, training=is_training)
-    dense_dropout = tf.compat.v1.layers.dropout(bn_dense, rate=0.5, training=is_training)
+    bn_dense = tf.compat.v1.layers.batch_normalization(dense, training=False)
+    dense_dropout = tf.compat.v1.layers.dropout(bn_dense, rate=0.5, training=False)
 
     # output dense layer
-    logits = tf.compat.v1.layers.dense(inputs=dense_dropout,
+    ld = tf.compat.v1.layers.dense(inputs=dense_dropout,
+                           activation=None,
+                           units=100)
+    logits = tf.compat.v1.layers.dense(inputs=ld,
                            activation=None,
                            units=num_classes)
 

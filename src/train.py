@@ -205,7 +205,7 @@ if __name__ == '__main__':
     sess.run(tf.global_variables_initializer())
     saver = tf.train.Saver()
     if config['load_model'] is not None:  # restore model weights from previously saved model
-        if config['model_number'] == 20:
+        if config['model_number'] == 20 or 11:
             saver = tf.compat.v1.train.Saver(var_list=model_vars[:-4])
         else:
             saver = tf.compat.v1.train.Saver(var_list=model_vars[:-2])
