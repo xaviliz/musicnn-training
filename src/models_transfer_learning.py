@@ -12,6 +12,8 @@ def define_model(x, is_training, model_num, num_classes):
         model = 'MTT_musicnn'
     elif model_num == 20:
         model = 'audioset_vgg'
+    elif model_num == 21:
+        model = 'small_vggish'
     else:
         raise Exception('model number not contemplated for transfer learning')
 
@@ -32,6 +34,9 @@ def define_model(x, is_training, model_num, num_classes):
 
     elif model == 'audioset_vgg':
         return define_vggish_slim(x, is_training, num_classes)
+
+    elif model == 'small_vggish':
+        return define_small_vggish_slim(x, is_training, num_classes)
 
     else:
         raise ValueError('Model not implemented!')
@@ -329,6 +334,80 @@ def define_vggish_slim(x, is_training, num_classes):
         # Flatten before entering fully-connected layers
         net = slim.flatten(net)
         net = slim.repeat(net, 2, slim.fully_connected, 4096, scope='fc1')
+        # The embedding layer.
+        embeddings = slim.fully_connected(net, EMBEDDING_SIZE, scope='fc2')
+
+    num_units = 100
+    fc = slim.fully_connected(embeddings, num_units)
+
+    # Add a classifier layer at the end, consisting of parallel logistic
+    # classifiers, one per class. This allows for multi-class tasks.
+    logits = slim.fully_connected(
+        fc, num_classes, activation_fn=None, scope='logits')
+    tf.sigmoid(logits, name='prediction')
+
+    return tf.identity(logits, name='logits')
+
+
+def define_small_vggish_slim(x, is_training, num_classes):
+    """Defines a small VGGish TensorFlow model.
+    WARNING: THIS MODEL IS NOT TRAINED.
+
+    The number of filters and fully-conected units are divided by 64 and the
+    weights are randomly initialized.
+
+    This models is created for testing purposes only due to the huge size of the
+    full VGGish. (~165k vs. ~280MB once serialized.)
+
+    Args:
+    training: If true, all parameters are marked trainable.
+    Returns:
+    The op 'vggish/embeddings'.
+    """
+
+    slim = tf.contrib.slim
+
+    # Architectural constants.
+    EMBEDDING_SIZE = 128  # Size of embedding layer.
+    NUM_FRAMES = 96  # Frames in input mel-spectrogram patch.
+    NUM_BANDS = 64  # Frequency bands in input mel-spectrogram patch.
+    INIT_STDDEV = 0.01  # Standard deviation used to initialize weights.
+
+    # Defaults:
+    # - All weights are initialized to N(0, INIT_STDDEV).
+    # - All biases are initialized to 0.
+    # - All activations are ReLU.
+    # - All convolutions are 3x3 with stride 1 and SAME padding.
+    # - All max-pools are 2x2 with stride 2 and SAME padding.
+
+    with slim.arg_scope([slim.conv2d, slim.fully_connected],
+                        weights_initializer=tf.truncated_normal_initializer(
+                            stddev=INIT_STDDEV),
+                        biases_initializer=tf.zeros_initializer(),
+                        activation_fn=tf.nn.relu,
+                        trainable=False), \
+        slim.arg_scope([slim.conv2d],
+                        kernel_size=[3, 3], stride=1, padding='SAME'), \
+        slim.arg_scope([slim.max_pool2d],
+                        kernel_size=[2, 2], stride=2, padding='SAME'), \
+        tf.variable_scope('vggish'):
+
+        # Reshape to 4-D so that we can convolve a batch with conv2d().
+        net = tf.reshape(x, [-1, NUM_FRAMES, NUM_BANDS, 1])
+
+        # The VGG stack of alternating convolutions and max-pools.
+        net = slim.conv2d(net, 1, scope='conv1')
+        net = slim.max_pool2d(net, scope='pool1')
+        net = slim.conv2d(net, 2, scope='conv2')
+        net = slim.max_pool2d(net, scope='pool2')
+        net = slim.repeat(net, 2, slim.conv2d, 4, scope='conv3')
+        net = slim.max_pool2d(net, scope='pool3')
+        net = slim.repeat(net, 2, slim.conv2d, 8, scope='conv4')
+        net = slim.max_pool2d(net, scope='pool4')
+
+        # Flatten before entering fully-connected layers
+        net = slim.flatten(net)
+        net = slim.repeat(net, 2, slim.fully_connected, 64, scope='fc1')
         # The embedding layer.
         embeddings = slim.fully_connected(net, EMBEDDING_SIZE, scope='fc2')
 
