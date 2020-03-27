@@ -3,6 +3,7 @@ from datetime import datetime
 from sklearn import metrics
 import warnings
 warnings.filterwarnings('ignore')
+from scipy.fftpack import dct
 
 
 def get_epoch_time():
@@ -30,36 +31,86 @@ def load_id2path(index_file):
     fspec = open(index_file)
     id2path = dict()
     for line in fspec.readlines():
-        id, path, _ = line.strip().split("\t")
+        id, path, = line.strip().split("\t")
         id2path[id] = path
         paths.append(path)
     return paths, id2path
 
 
-def auc_with_aggergated_predictions(pred_array, id_array, ids, id2gt): 
+def auc_with_aggergated_predictions(y_true, y_pred):
+    print('now computing AUC..')
+    roc_auc, pr_auc = compute_auc(y_true, y_pred)
+    return np.mean(roc_auc), np.mean(pr_auc)
+
+
+def compute_auc(true, estimated):
+    pr_auc = []
+    roc_auc = []
+
+    estimated = np.array(estimated)
+    true = np.array(true)
+
+    for count in range(0, estimated.shape[1]):
+        try:
+            pr_auc.append(metrics.average_precision_score(true[:,count],estimated[:,count]))
+            roc_auc.append(metrics.roc_auc_score(true[:,count],estimated[:,count]))
+        except:
+            print('failed!')
+    return roc_auc, pr_auc
+
+
+def mel_2_mfcc(x, n=24, x_min=-1, x_max=1, headroom=.01):
+    d_time = dct(x, type=2, n=n + 1, axis=1, norm=None, overwrite_x=False)
+
+    # Remove first coefficient
+    d_time = d_time[:, 1:]
+
+    d = np.hstack([np.mean(d_time, axis=0), np.std(d_time, axis=0)])
+
+
+    return minmax_standarize(d, x_max=x_max,
+                                x_min=x_min,
+                                headroom=headroom)
+
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+def minmax_standarize(x, x_min=-1, x_max=1, headroom=.1):
+    return (x - x_min) / ((x_max + headroom) - (x_min - headroom))
+
+
+def average_predictions(pred_array, id_array, ids, id2gt=None):
     # averaging probabilities -> one could also do majority voting
+    print('Averaging predictions')
     y_pred = []
     y_true = []
     for id in ids:
         try:
-            avg = np.mean(pred_array[np.where(id_array==id)], axis=0)
+            avg = np.mean(pred_array[np.where(id_array == id)], axis=0)
+            if np.isnan(avg).any():
+                print('{} skipped because it contains nans'.format(id))
+                continue
+
+            if np.isposinf(avg).any():
+                print('{} skipped because it contains pos infs'.format(id))
+                continue
+
+            if np.isneginf(avg).any():
+                print('{} skipped because it contains neg infs'.format(id))
+                continue
             y_pred.append(avg)
-            y_true.append(id2gt[id])
+            if id2gt:
+                y_true.append(id2gt[id])
         except:
             print(id)
-            
-    print('Predictions are averaged, now computing AUC..')
-    roc_auc, pr_auc = compute_auc(y_true, y_pred)
-    return  np.mean(roc_auc), np.mean(pr_auc)
-   
 
-def compute_auc(true,estimated):
-    pr_auc=[]
-    roc_auc=[]    
-    estimated = np.array(estimated)
-    true = np.array(true) 
-    for count in range(0,estimated.shape[1]):
-        pr_auc.append(metrics.average_precision_score(true[:,count],estimated[:,count]))
-        roc_auc.append(metrics.roc_auc_score(true[:,count],estimated[:,count]))
-    return roc_auc, pr_auc
+    if id2gt:
+        return y_true, y_pred
+    else:
+        return y_pred
 
+def compute_accuracy(y_true, y_pred):
+    print('computing accuracy of {} elements'.format(len(y_true)))
+    y_true_idx = np.argmax(y_true, axis=1)
+    y_pred_idx = np.argmax(y_pred, axis=1)
+    return metrics.balanced_accuracy_score(y_true_idx, y_pred_idx)

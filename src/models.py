@@ -8,6 +8,10 @@ import models_baselines
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 def model_number(x, is_training, config):
+    if config['load_model'] is not None:
+        trainable = False
+    else:
+        trainable =True
 
     ############### START BASELINES ###############
     #     dieleman < vgg32 < timbre < vgg128      #
@@ -44,18 +48,19 @@ def model_number(x, is_training, config):
         midend_features_list = midend.dense_cnns(frontend_features, is_training, 64)
         midend_features = midend_features_list[3] # residual connections: just pick the last of previous layers
 
-        return backend.temporal_pooling(midend_features, is_training, 50, 200, type='globalpool')
+        return backend.temporal_pooling(midend_features, is_training, int(config['num_classes_dataset']), 200, type='globalpool')
         # 508k params | ROC-AUC: 90.61 | PR-AUC: 38.33 | VAL-COST: 0.1304
 
     elif config['model_number'] == 11:
+        
         print('\nMODEL: BN input > [7, 70%][7, 40%] + temporal > DENSE > GLOBAL POOLING')
-        frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['audio_rep']['n_mels'], num_filt=1.6, type='7774timbraltemporal')
+        frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['audio_rep']['n_mels'], num_filt=1.6, type='7774timbraltemporal', trainable=trainable)
         frontend_features = tf.concat(frontend_features_list, 2) # concatnate features coming from the front-end
 
-        midend_features_list = midend.dense_cnns(frontend_features, is_training, 64)
+        midend_features_list = midend.dense_cnns(frontend_features, is_training, 64, trainable=trainable)
         midend_features = tf.concat(midend_features_list, 2)  # dense connection: concatenate features from previous layers
 
-        return backend.temporal_pooling(midend_features, is_training, 50, 200, type='globalpool')
+        return backend.temporal_pooling(midend_features, is_training, int(config['num_classes_dataset']), 200, type='globalpool', trainable=trainable)
         # 787k params | ROC-AUC: 90.69 | PR-AUC: 38.44 | VAL-COST: 0.1304
 
     elif config['model_number'] == 12:
@@ -66,7 +71,7 @@ def model_number(x, is_training, config):
         midend_features_list = midend.dense_cnns(frontend_features, is_training, 64)
         midend_features = tf.concat(midend_features_list, 2)  # dense connection: concatenate features from previous layers
 
-        return backend.temporal_pooling(midend_features, is_training, 50, 200, type='attention_positional')
+        return backend.temporal_pooling(midend_features, is_training, int(config['num_classes_dataset']), 200, type='attention_positional')
         # 2.4M params | ROC-AUC: 90.77 | PR-AUC: 38.61 | VAL-COST: 0.1304
 
     elif config['model_number'] == 13:
@@ -91,10 +96,20 @@ def model_number(x, is_training, config):
         return backend.temporal_pooling(midend_features, is_training, 50, 200, type='rnn')
         # 3.8M params | ROC-AUC: 90.21 | PR-AUC: 37.17 | VAL-COST: 0.1341
 
+    # elif config['model_number'] == 15:
+    #     # same as 11 but we are returning the dense layer to connect the discriminator
+    #     from flip_gradient import flip_gradient
+
+    #     print('\nMODEL: BN input > [7, 70%][7, 40%] + temporal > DENSE > GLOBAL POOLING + RGL')
+    #     frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['audio_rep']['n_mels'], num_filt=1.6, type='7774timbraltemporal')
+    #     frontend_features = tf.concat(frontend_features_list, 2) # concatnate features coming from the front-end
+
+    #     midend_features_list = midend.dense_cnns(frontend_features, is_training, 64)
+    #     midend_features = tf.concat(midend_features_list, 2)  # dense connection: concatenate features from previous layers
+
+    #     dense, logits = backend.temporal_pooling(midend_features, is_training, config['num_classes_dataset'] , 200, type='globalpool', return_penultimate=True)
+
+
+    #     return (logits, discriminator)
+
     raise RuntimeError("ERROR: Model {} can't be found!".format(config["model_number"]))
-
-
-
-
-
-

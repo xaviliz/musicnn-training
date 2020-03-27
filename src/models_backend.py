@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 
 
-def temporal_pooling(feature_map, is_training, num_classes_dataset, num_units_backend, type):
+def temporal_pooling(feature_map, is_training, num_classes_dataset, num_units_backend, type, return_penultimate=False, trainable=True):
 
     # which temporal pooling?
 
@@ -57,21 +57,30 @@ def temporal_pooling(feature_map, is_training, num_classes_dataset, num_units_ba
     print('Temporal pooling: ' + str(tmp_pool.shape))
     # dense layer with droupout
     flat_pool = tf.contrib.layers.flatten(tmp_pool)
-    flat_pool = tf.compat.v1.layers.batch_normalization(flat_pool, training=is_training)
+    flat_pool = tf.compat.v1.layers.batch_normalization(flat_pool, training=is_training, trainable=trainable)
     flat_pool_dropout = tf.layers.dropout(flat_pool, rate=0.5, training=is_training)
     dense = tf.compat.v1.layers.dense(inputs=flat_pool_dropout,
                             units=num_units_backend,
                             activation=tf.nn.relu,
-                            kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
-    bn_dense = tf.compat.v1.layers.batch_normalization(dense, training=is_training)
-
-    # output layer
+                            kernel_initializer=tf.contrib.layers.variance_scaling_initializer(),
+                            trainable=trainable)
+    bn_dense = tf.compat.v1.layers.batch_normalization(dense, training=is_training, trainable=trainable)
     dense_dropout = tf.compat.v1.layers.dropout(bn_dense, rate=0.5, training=is_training)
-    return tf.compat.v1.layers.dense(inputs=dense_dropout,
+
+
+    # Smaller dense layer shared betwen tasks/
+    shared_dense = tf.compat.v1.layers.dense(inputs=dense_dropout,
+        units=num_units_backend // 2,
+        activation=None,
+        kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
+
+    if return_penultimate:
+        return shared_dense
+    else:
+        return tf.compat.v1.layers.dense(inputs=shared_dense,
                            activation=None,
                            units=num_classes_dataset,
                            kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
-
 
 def positional_encoding(feature_map_size):
     _, T, num_units = feature_map_size
@@ -81,4 +90,3 @@ def positional_encoding(feature_map_size):
     position_enc[:, 1::2] = np.cos(position_enc[:, 1::2])  # dim 2i+1
     outputs = tf.convert_to_tensor(position_enc,dtype=tf.float32)
     return tf.reshape(outputs,[-1,T,num_units])
-
