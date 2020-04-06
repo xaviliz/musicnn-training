@@ -30,7 +30,7 @@ def load_id2path(index_file):
     fspec = open(index_file)
     id2path = dict()
     for line in fspec.readlines():
-        id, path, _ = line.strip().split("\t")
+        id, path, = line.strip().split("\t")
         id2path[id] = path
         paths.append(path)
     return paths, id2path

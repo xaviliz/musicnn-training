@@ -1,5 +1,5 @@
-DATA_FOLDER = '/home/jpons/Github/musicnn-training/data/'  # set your data folder
 
+DATA_FOLDER = '/home/palonso/models/essentia_embeddings/musicnn_msd_baseline/'  # set your data folder
 config_preprocess = {
     'mtt_spec': {
         'identifier': 'mtt',                      # name for easy identification
@@ -31,16 +31,16 @@ config_preprocess = {
     }
 }
 
-DATASET = 'mtt'
-#DATASET = 'msd'
+# DATASET = 'mtt'
+DATASET = 'msd'
 
 config_train = {
     'spec': {
         'name_run': '',
         # which data?
         'audio_representation_folder': 'audio_representation/'+DATASET+'__time-freq/',
-        'gt_train': 'index/'+DATASET+'/train_gt_'+DATASET+'.tsv',
-        'gt_val': 'index/'+DATASET+'/val_gt_'+DATASET+'.tsv',
+        'gt_train': 'train_gt_'+DATASET+'.tsv',
+        'gt_val': 'val_gt_'+DATASET+'.tsv',
 
         # input setup?
         'n_frames': 187,                          # length of the input (integer)
@@ -52,16 +52,22 @@ config_train = {
         # learning parameters?
         'model_number': 11,                       # number of the model as in models.py
         'load_model': None,                       # set to None or absolute path to the model
-        'epochs': 600,                            # maximum number of epochs before stopping training
-        'batch_size': 32,                         # batch size during training
+        'epochs': 120,                            # maximum number of epochs before stopping training
+        'batch_size': 64,                         # batch size during training
         'weight_decay': 1e-5,                     # None or value for the regularization parameter
         'learning_rate': 0.001,                   # learning rate
         'optimizer': 'Adam',                      # 'SGD_clip', 'SGD', 'Adam'
-        'patience': 75,                           # divide by two the learning rate after the number of 'patience' epochs (integer)
+        'patience': 25,                           # divide by two the learning rate after the number of 'patience' epochs (integer)
+        'lambda': 1.0,                            # lambda for reversal gradient models
+        'discriminator_dimensions': 12,
+        'mfcc_max':  39.399,
+        'mfcc_min': -26.740,
+        # 'mfcc_max':  2.,
+        # 'mfcc_min': -2.,
+        'mfcc_headroom': 0.1,
 
         # experiment settings?
         'num_classes_dataset': 50,
-        'val_batch_size': 32
+        'val_batch_size': 64
     }
 }
-

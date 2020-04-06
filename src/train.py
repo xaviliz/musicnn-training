@@ -46,7 +46,8 @@ def data_gen(id, audio_repr_path, gt, pack):
     [config, sampling, param_sampling, augmentation] = pack
 
     # load audio representation -> audio_repr shape: NxM
-    audio_rep = pickle.load(open(config_file.DATA_FOLDER + audio_repr_path, 'rb'))
+    audio_repr_path = config_file.DATA_FOLDER + 'audio_representation/msd__time-freq/' + audio_repr_path + '.npy'
+    audio_rep = np.load(audio_repr_path)
     if config['pre_processing'] == 'logEPS':
         audio_rep = np.log10(audio_rep + np.finfo(float).eps)
     elif  config['pre_processing'] == 'logC':
