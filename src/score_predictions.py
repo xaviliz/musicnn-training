@@ -9,6 +9,7 @@ from tqdm import tqdm
 import yaml
 from argparse import Namespace
 import json
+from sklearn.metrics import classification_report
 
 config_file = Namespace(**yaml.load(open('config_file.yaml')))
 
@@ -27,6 +28,10 @@ def score_predictions(y_true, y_pred, folds, folds_gt, output_file):
         y_pred_fold = list(folds[i].values())
         accs.append(shared.compute_accuracy(y_true_fold, y_pred_fold))
 
+    y_true_argmax = [np.argmax(i) for i in y_true]
+    y_pred_argmax = [np.argmax(i) for i in y_pred]
+
+    report = classification_report(y_true_argmax, y_pred_argmax)
     # print experimental results
     print('ROC-AUC: ' + str(roc_auc))
     print('PR-AUC: ' + str(pr_auc))
@@ -43,6 +48,9 @@ def score_predictions(y_true, y_pred, folds, folds_gt, output_file):
     to.write('\nAcc: ' + str(acc))
     to.write('\nstd: ' + str(np.std(accs)))
     to.write('\n')
+    to.write('Report:\n')
+    to.write('{}\n'.format(report))
+
     to.close()
 
     output_summary = '/'.join(output_file.split('/')[:-2]) + '/results.json'
