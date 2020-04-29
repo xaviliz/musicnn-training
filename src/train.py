@@ -33,47 +33,60 @@ def tf_define_model_and_cost(config):
             import models
             y = models.model_number(x, is_train, config)
 
-        y = tf.compat.v1.layers.dense(inputs=y,
-            activation=None,
-            units=config['num_classes_dataset'],
-            kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
-
-        # deal with the reversal gradient case
+        """
+        # Code for type A
+        # Discriminator conected to the classifier.
+        # This case is not contemplated for our experiments as is not possible
+        # to infer the complex discriminator task from the classification output
         if config['mode'] == 'adversarial':
-            d_ = tf.compat.v1.placeholder(tf.float32, [None, 2 * config['discriminator_dimensions']])
+            d_ = tf.compat.v1.placeholder(tf.float32, [None, config['discriminator_dimensions']])
 
             # Rename it as shared dense
             flipped = flip_gradient(y, config['lambda']) # Second backend for RevGrad
 
             y, d = gradient_projection(y, flipped) # Second backend for RevGrad
+            d = tf.reshape(d, [-1, config['num_classes_dataset']])
 
-            d = tf.compat.v1.layers.dense(inputs=tf.reshape(d, [-1, config['num_classes_dataset']]),
+            y = tf.compat.v1.layers.dense(inputs=y,
                 activation=None,
-                units=config['discriminator_dimensions'] * 2,
+                units=config['num_classes_dataset'],
                 kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
 
+            den = tf.compat.v1.layers.dense(inputs=d,
+                        units=10,
+                        activation=tf.nn.relu,
+                        kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
 
-        """ Code for type A
-        # deal with the reversal gradient case
+            d = tf.compat.v1.layers.dense(inputs=den,
+                activation=None,
+                units=config['discriminator_dimensions'],
+                kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
+          """
+
+        # Code for type B
+        # A common layer conected to the feature extractor with 2 heads,
+        # one for the classification and other for the discrimination task.
         if config['mode'] == 'adversarial':
             shared_dense = y
-            d_ = tf.compat.v1.placeholder(tf.float32, [None, 2 * config['discriminator_dimensions']])
+            d_ = tf.compat.v1.placeholder(tf.float32, [None, config['discriminator_dimensions']])
 
-            # Rename it as shared dense
-            flipped = flip_gradient(shared_dense, config['lambda']) # Second backend for RevGrad
+            # RevGrad layer
+            flipped = flip_gradient(shared_dense, config['lambda'])
 
-            y, d = gradient_projection(shared_dense, flipped) # Second backend for RevGrad
+            # Gradient projection layer
+            y, d = gradient_projection(shared_dense, flipped)
 
-        d = tf.compat.v1.layers.dense(inputs=tf.reshape(d, [-1, 100]),
-                            activation=None,
-                            units=config['discriminator_dimensions'] * 2,
-                            kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
-
-        y = tf.compat.v1.layers.dense(inputs=tf.reshape(y, [-1, 100]),
+        y = tf.compat.v1.layers.dense(inputs=tf.reshape(y, [-1, 30]),
                                         activation=None,
                                         units=config['num_classes_dataset'],
                                         kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
-        """
+
+        if config['mode'] == 'adversarial':
+            d = tf.compat.v1.layers.dense(inputs=tf.reshape(d, [-1, 30]),
+                                activation=None,
+                                units=config['discriminator_dimensions'],
+                                kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
+
 
         normalized_y = tf.nn.sigmoid(y)
         print(normalized_y.get_shape())
@@ -82,7 +95,7 @@ def tf_define_model_and_cost(config):
     # tensorflow: define cost function
     with tf.name_scope('metrics'):
         # if you use softmax_cross_entropy be sure that the output of your model has linear units!
-        cost = tf.losses.mean_squared_error(y_, y)
+        cost = tf.losses.sigmoid_cross_entropy(y_, y)
         if config['weight_decay'] != None:
             vars = tf.trainable_variables()
             lossL2 = tf.add_n([ tf.nn.l2_loss(v) for v in vars if 'kernel' or 'weights' in v.name ])
@@ -92,7 +105,7 @@ def tf_define_model_and_cost(config):
         # add discriminator loss component
         if config['mode'] == 'adversarial':
             t_cost = cost
-            d_cost = tf.losses.mean_squared_error(d_, d)
+            d_cost = tf.losses.sigmoid_cross_entropy(d_, d)
 
             cost = t_cost + d_cost
 
@@ -246,7 +259,7 @@ if __name__ == '__main__':
     if config['load_model'] is not None: # restore model weights from previously saved model
         if config['mode'] == 'adversarial':
             # Skip the layers we are going to train: 2 tasks X 2 layers X (kernel + bias) = 8
-            saver = tf.compat.v1.train.Saver(var_list=model_vars[:-8])
+            saver = tf.compat.v1.train.Saver(var_list=model_vars[:-6])
         else:
             # Skip the layers we are going to train: 1 task X 2 layers X (kernel + bias) = 4
             saver = tf.compat.v1.train.Saver(var_list=model_vars[:-4])
@@ -279,72 +292,129 @@ if __name__ == '__main__':
     tmp_learning_rate = config['learning_rate']
     print('Training started..')
 
-    for i in range(config['epochs']):
-        # training: do not train first epoch, to see random weights behaviour
-        i, train_batch_streamer, sess, train_step, cost, t_cost, d_cost
-        start_time = time.time()
-        array_train_cost = []
-        array_train_t_cost = []
-        array_train_d_cost = []
-        if i != 0:
-            for train_batch in train_batch_streamer:
-                tf_start = time.time()
-                _, train_cost, train_t_cost, train_d_cost = sess.run([train_step, cost, t_cost, d_cost],
-                                            feed_dict={x: train_batch['X'], y_: train_batch['Y'], d_: train_batch['D'], lr: tmp_learning_rate, is_train: True})
-                array_train_cost.append(train_cost)
-                array_train_t_cost.append(train_t_cost)
-                array_train_d_cost.append(train_d_cost)
+    if config['mode'] == 'regular':
+        for i in range(config['epochs']):
+            # training: do not train first epoch, to see random weights behaviour
+            i, train_batch_streamer, sess, train_step, cost
+            start_time = time.time()
+            array_train_cost = []
+            if i != 0:
+                for train_batch in train_batch_streamer:
+                    tf_start = time.time()
+                    _, train_cost = sess.run([train_step, cost],
+                                              feed_dict={x: train_batch['X'], y_: train_batch['Y'], lr: tmp_learning_rate, is_train: True})
+                    array_train_cost.append(train_cost)
 
-        # validation
-        array_val_cost = []
-        array_val_t_cost = []
-        array_val_d_cost = []
-        for val_batch in val_batch_streamer:
-            val_cost, val_t_cost, val_d_cost = sess.run([cost, t_cost, d_cost],
-                                feed_dict={x: val_batch['X'], y_: val_batch['Y'], d_: val_batch['D'], is_train: False})
-            array_val_cost.append(val_cost)
-            array_val_t_cost.append(val_t_cost)
-            array_val_d_cost.append(val_d_cost)
+            # validation
+            array_val_cost = []
+            for val_batch in val_batch_streamer:
+                val_cost = sess.run([cost],
+                                    feed_dict={x: val_batch['X'], y_: val_batch['Y'], is_train: False})
+                array_val_cost.append(val_cost)
 
-        # Keep track of average loss of the epoch
-        train_cost = np.mean(array_train_cost)
-        train_t_cost = np.mean(array_train_t_cost)
-        train_d_cost = np.mean(array_train_d_cost)
+            # Keep track of average loss of the epoch
+            train_cost = np.mean(array_train_cost)
 
-        val_cost = np.mean(array_val_cost)
-        val_t_cost = np.mean(array_val_t_cost)
-        val_d_cost = np.mean(array_val_d_cost)
-        epoch_time = time.time() - start_time
-        fy = open(model_folder + 'train_log.tsv', 'a')
-        fy.write('%d\t%g\t%g\t%g\t%g\t%g\t%g\t%gs\t%g\n' % (i+1, train_cost, train_t_cost, train_d_cost, val_cost, val_t_cost, val_d_cost, epoch_time, tmp_learning_rate))
-        fy.close()
+            val_cost = np.mean(array_val_cost)
+            epoch_time = time.time() - start_time
+            fy = open(model_folder + 'train_log.tsv', 'a')
+            fy.write('%g\t%g\t%g\t%gs\t%g\n' % (i+1, train_cost, val_cost, epoch_time, tmp_learning_rate))
+            fy.close()
 
-        # Decrease the learning rate after not improving in the validation set
-        if config['patience'] and k_patience >= config['patience']:
-            print('Changing learning rate!')
-            tmp_learning_rate = tmp_learning_rate / 2
-            print(tmp_learning_rate)
-            k_patience = 0
+            # Decrease the learning rate after not improving in the validation set
+            if config['patience'] and k_patience >= config['patience']:
+                print('Changing learning rate!')
+                tmp_learning_rate = tmp_learning_rate / 2
+                print(tmp_learning_rate)
+                k_patience = 0
 
-        # Early stopping: keep the best model in validation set
-        if val_t_cost >= cost_best_model:
-            k_patience += 1
-            print('Epoch %d, train cost %g, train task cost %g, train discriminator cost %g, '
-                    'val cost %g, val task cost %g, val discriminator cost %g,'
-                    'epoch-time %gs, lr %g, time-stamp %s' %
-                    (i+1, train_cost, train_t_cost, train_d_cost, val_cost, val_t_cost, val_d_cost, epoch_time, tmp_learning_rate,
-                    str(time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime()))))
+            # Early stopping: keep the best model in validation set
+            if val_cost >= cost_best_model:
+                k_patience += 1
+                print('Epoch %d, train cost %g, '
+                        'val cost %g, '
+                        'epoch-time %gs, lr %g, time-stamp %s' %
+                        (i+1, train_cost, val_cost, epoch_time, tmp_learning_rate,
+                        str(time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime()))))
 
-        else:
-            # save model weights to disk
-            save_path = saver.save(sess, model_folder)
-            print('Epoch %d, train cost %g, train task cost %g, train discriminator cost %g, '
-                    'val cost %g, val task cost %g, val discriminator cost %g,'
-                    'epoch-time %gs, lr %g, time-stamp %s - [BEST MODEL]'
-                    ' saved in: %s' %
-                    (i+1, train_cost, train_t_cost, train_d_cost, val_cost, val_t_cost, val_d_cost, epoch_time,tmp_learning_rate,
-                    str(time.strftime('%Y-%m-%d %H:%M:%S',time.gmtime())), save_path))
-            cost_best_model = val_t_cost
+            else:
+                # save model weights to disk
+                save_path = saver.save(sess, model_folder)
+                print('Epoch %d, train cost %g, '
+                        'val cost %g, '
+                        'epoch-time %gs, lr %g, time-stamp %s - [BEST MODEL]'
+                        ' saved in: %s' %
+                        (i+1, train_cost, val_cost, epoch_time,tmp_learning_rate,
+                        str(time.strftime('%Y-%m-%d %H:%M:%S',time.gmtime())), save_path))
+                cost_best_model = val_cost
+
+    elif config['mode'] == 'adversarial':
+        for i in range(config['epochs']):
+            # training: do not train first epoch, to see random weights behaviour
+            i, train_batch_streamer, sess, train_step, cost, t_cost, d_cost
+            start_time = time.time()
+            array_train_cost = []
+            array_train_t_cost = []
+            array_train_d_cost = []
+            if i != 0:
+                for train_batch in train_batch_streamer:
+                    tf_start = time.time()
+                    _, train_cost, train_t_cost, train_d_cost = sess.run([train_step, cost, t_cost, d_cost],
+                                                feed_dict={x: train_batch['X'], y_: train_batch['Y'], d_: train_batch['D'], lr: tmp_learning_rate, is_train: True})
+                    array_train_cost.append(train_cost)
+                    array_train_t_cost.append(train_t_cost)
+                    array_train_d_cost.append(train_d_cost)
+
+            # validation
+            array_val_cost = []
+            array_val_t_cost = []
+            array_val_d_cost = []
+            for val_batch in val_batch_streamer:
+                val_cost, val_t_cost, val_d_cost = sess.run([cost, t_cost, d_cost],
+                                    feed_dict={x: val_batch['X'], y_: val_batch['Y'], d_: val_batch['D'], is_train: False})
+                array_val_cost.append(val_cost)
+                array_val_t_cost.append(val_t_cost)
+                array_val_d_cost.append(val_d_cost)
+
+            # Keep track of average loss of the epoch
+            train_cost = np.mean(array_train_cost)
+            train_t_cost = np.mean(array_train_t_cost)
+            train_d_cost = np.mean(array_train_d_cost)
+
+            val_cost = np.mean(array_val_cost)
+            val_t_cost = np.mean(array_val_t_cost)
+            val_d_cost = np.mean(array_val_d_cost)
+            epoch_time = time.time() - start_time
+            fy = open(model_folder + 'train_log.tsv', 'a')
+            fy.write('%d\t%g\t%g\t%g\t%g\t%g\t%g\t%gs\t%g\n' % (i+1, train_cost, train_t_cost, train_d_cost, val_cost, val_t_cost, val_d_cost, epoch_time, tmp_learning_rate))
+            fy.close()
+
+            # Decrease the learning rate after not improving in the validation set
+            if config['patience'] and k_patience >= config['patience']:
+                print('Changing learning rate!')
+                tmp_learning_rate = tmp_learning_rate / 2
+                print(tmp_learning_rate)
+                k_patience = 0
+
+            # Early stopping: keep the best model in validation set
+            if val_t_cost >= cost_best_model:
+                k_patience += 1
+                print('Epoch %d, train cost %g, train task cost %g, train discriminator cost %g, '
+                        'val cost %g, val task cost %g, val discriminator cost %g,'
+                        'epoch-time %gs, lr %g, time-stamp %s' %
+                        (i+1, train_cost, train_t_cost, train_d_cost, val_cost, val_t_cost, val_d_cost, epoch_time, tmp_learning_rate,
+                        str(time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime()))))
+
+            else:
+                # save model weights to disk
+                save_path = saver.save(sess, model_folder)
+                print('Epoch %d, train cost %g, train task cost %g, train discriminator cost %g, '
+                        'val cost %g, val task cost %g, val discriminator cost %g,'
+                        'epoch-time %gs, lr %g, time-stamp %s - [BEST MODEL]'
+                        ' saved in: %s' %
+                        (i+1, train_cost, train_t_cost, train_d_cost, val_cost, val_t_cost, val_d_cost, epoch_time,tmp_learning_rate,
+                        str(time.strftime('%Y-%m-%d %H:%M:%S',time.gmtime())), save_path))
+                cost_best_model = val_t_cost
 
 
     print('\nEVALUATE EXPERIMENT -> '+ str(experiment_id))
