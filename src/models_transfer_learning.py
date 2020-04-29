@@ -216,7 +216,7 @@ def backend(feature_map, is_training, num_classes, output_units, type):
     # output dense layer
     ld = tf.compat.v1.layers.dense(inputs=dense_dropout,
                            activation=tf.nn.relu,
-                           units=100)
+                           units=30)
     # logits = tf.compat.v1.layers.dense(inputs=ld,
     #                        activation=None,
     #                        units=num_classes)
@@ -289,7 +289,7 @@ def vgg(x, is_training, num_classes, num_filters=32):
     do_pool5 = tf.compat.v1.layers.dropout(flat_pool5, rate=0.5, training=is_training)
     output = tf.compat.v1.layers.dense(inputs=do_pool5,
                             activation=tf.nn.relu,
-                            units=100)
+                            units=30)
     return output
 
 
