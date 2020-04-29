@@ -170,6 +170,39 @@ def data_gen_key(id, audio_repr_path, gt, pack):
         print(repr(ex))
 
 
+def data_gen_random(id, audio_repr_path, gt, pack):
+    [config, sampling, param_sampling, augmentation, data_folder] = pack
+    abs_path = data_folder + audio_repr_path
+
+    disc_vect = [np.random.uniform()]
+
+    # load audio representation -> audio_repr shape: NxM
+    try:
+        audio_rep = np.load(open(abs_path, 'rb'), allow_pickle=True)
+        # audio_rep = pickle.load(open(abs_path, 'rb'))
+        if config['pre_processing'] == 'logEPS':
+            audio_rep = np.log10(audio_rep + np.finfo(float).eps)
+        elif  config['pre_processing'] == 'logC':
+            audio_rep = np.log10(10000 * audio_rep + 1)
+
+        # let's deliver some data!
+        last_frame = int(audio_rep.shape[0]) - int(config['xInput']) + 1
+        if sampling == 'random':
+            time_stamp = random.randint(0,last_frame-1)
+            x = audio_rep[time_stamp : time_stamp+config['xInput'], :]
+
+            yield dict(X = x, Y = gt, ID = id, D = disc_vect)
+
+        elif sampling == 'overlap_sampling':
+            for time_stamp in range(0, last_frame, param_sampling):
+                x = audio_rep[time_stamp : time_stamp+config['xInput'], : ]
+
+                yield dict(X = x, Y = gt, ID = id, D = disc_vect)
+    except Exception as ex:
+        print('"{}" failed'.format(abs_path))
+        print(repr(ex))
+
+
 def data_gen_music_feature(id, audio_repr_path, gt, pack):
     [config, sampling, param_sampling, augmentation, data_folder] = pack
     abs_path = data_folder + audio_repr_path
