@@ -1,20 +1,17 @@
 import argparse
+from argparse import Namespace
 import json
 import os
 import time
-import random
-import pescador
+import yaml
+
 import numpy as np
 import tensorflow as tf
+import pescador
 
 import shared
-import pickle
-from tensorflow.python.framework import ops
-import yaml
-from argparse import Namespace
-from tensorflow.keras.backend import binary_crossentropy
-from flip_gradient import flip_gradient
-from gradient_projection import gradient_projection
+import classification_heads
+from feature_functions import set_lowlevel_task
 
 config_file = Namespace(**yaml.load(open('config_file.yaml'), Loader=yaml.SafeLoader))
 
@@ -33,63 +30,18 @@ def tf_define_model_and_cost(config):
             import models
             y = models.model_number(x, is_train, config)
 
-        """
-        # Code for type A
-        # Discriminator conected to the classifier.
-        # This case is not contemplated for our experiments as is not possible
-        # to infer the complex discriminator task from the classification output
-        if config['mode'] == 'adversarial':
-            d_ = tf.compat.v1.placeholder(tf.float32, [None, config['discriminator_dimensions']])
-
-            # Rename it as shared dense
-            flipped = flip_gradient(y, config['lambda']) # Second backend for RevGrad
-
-            y, d = gradient_projection(y, flipped) # Second backend for RevGrad
-            d = tf.reshape(d, [-1, config['num_classes_dataset']])
-
-            y = tf.compat.v1.layers.dense(inputs=y,
-                activation=None,
-                units=config['num_classes_dataset'],
-                kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
-
-            den = tf.compat.v1.layers.dense(inputs=d,
-                        units=10,
-                        activation=tf.nn.relu,
-                        kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
-
-            d = tf.compat.v1.layers.dense(inputs=den,
-                activation=None,
-                units=config['discriminator_dimensions'],
-                kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
-          """
-
-        # Code for type B
-        # A common layer conected to the feature extractor with 2 heads,
-        # one for the classification and other for the discrimination task.
-        if config['mode'] == 'adversarial':
-            shared_dense = y
-            d_ = tf.compat.v1.placeholder(tf.float32, [None, config['discriminator_dimensions']])
-
-            # RevGrad layer
-            flipped = flip_gradient(shared_dense, config['lambda'])
-
-            # Gradient projection layer
-            y, d = gradient_projection(shared_dense, flipped)
-
-        y = tf.compat.v1.layers.dense(inputs=tf.reshape(y, [-1, 30]),
-                                        activation=None,
-                                        units=config['num_classes_dataset'],
-                                        kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
-
-        if config['mode'] == 'adversarial':
-            d = tf.compat.v1.layers.dense(inputs=tf.reshape(d, [-1, 30]),
-                                activation=None,
-                                units=config['discriminator_dimensions'],
-                                kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
-
+        if config['mode'] == 'regular':
+            y= classification_heads.regular(y, config)
+        elif config['mode'] == 'adversarial_type_a':
+            y, d, d_ = classification_heads.adversarial_type_a(y, config)
+        elif config['mode'] == 'adversarial' or config['mode'] == 'adversarial_type_b':
+            y, d, d_ = classification_heads.adversarial_type_b(y, config)
+        else:
+            raise Exception('Training mode "{}" not implemented'.format(config['mode']))
 
         normalized_y = tf.nn.sigmoid(y)
         print(normalized_y.get_shape())
+
     print('Number of parameters of the model: ' + str(shared.count_params(tf.trainable_variables()))+'\n')
 
     # tensorflow: define cost function
@@ -103,7 +55,7 @@ def tf_define_model_and_cost(config):
             print('L2 norm, weight decay!')
 
         # add discriminator loss component
-        if config['mode'] == 'adversarial':
+        if 'adversarial' in config['mode']:
             t_cost = cost
             d_cost = tf.losses.sigmoid_cross_entropy(d_, d)
 
@@ -114,7 +66,7 @@ def tf_define_model_and_cost(config):
     for variables in tf.trainable_variables():
         print(variables)
 
-    if config['mode'] == 'adversarial':
+    if 'adversarial' in config['mode']:
         return [x, y_, is_train, y, normalized_y, (cost, t_cost, d_cost), d_, model_vars]
     else:
         return [x, y_, is_train, y, normalized_y, cost, model_vars]
@@ -158,6 +110,24 @@ if __name__ == '__main__':
         config['xInput'] = config['n_frames']
         config['yInput'] = config['audio_rep']['n_mels']
 
+    # get the data loader
+    if 'adversarial' in config['mode']:
+        print('Loading data generator for adversarial training targeting {}'.format(config['discriminator_target']))
+        from data_loaders import data_gen_discriminator as data_gen
+    elif config['mode'] == 'regular':
+        print('Loading data generator for regular training')
+        from data_loaders import data_gen_standard as data_gen
+    else:
+        raise Exception('Training mode "{}" not implemented'.format(config['mode']))
+
+    # get the training task
+    if config['task'] == 'labels':
+        pass
+    elif config['task'] == 'lowlevel_descriptors':
+        set_lowlevel_task(config)
+    else:
+        raise Exception('Training task "{}" not implemented'.format(config['task']))
+
     # load audio representation paths
     file_index = config_file.DATA_FOLDER + 'index_repr.tsv'
     [audio_repr_paths, id2audio_repr_path] = shared.load_id2path(file_index)
@@ -186,7 +156,7 @@ if __name__ == '__main__':
     print('\nConfig file saved: ' + str(config))
 
     # tensorflow: define model and cost
-    if config['mode'] == 'adversarial':
+    if 'adversarial' in config['mode']:
         [x, y_, is_train, y, normalized_y, costs, d_, model_vars] = tf_define_model_and_cost(config)
         cost, t_cost, d_cost = costs
     else:
@@ -231,11 +201,6 @@ if __name__ == '__main__':
         # Re-dump config with ids
         json.dump(config, open(model_folder + 'config.json', 'w'))
 
-    if config['mode'] == 'adversarial':
-        from data_loaders import data_gen_discriminator as data_gen
-    else:
-        from data_loaders import data_gen_standard as data_gen
-
     # pescador train: define streamer
     train_pack = [config, config['train_sampling'], config['param_train_sampling'], False, config_file.DATA_FOLDER]
     train_streams = [pescador.Streamer(data_gen, id, id2audio_repr_path[id], id2gt_train[id], train_pack) for id in ids_train]
@@ -257,8 +222,11 @@ if __name__ == '__main__':
     saver = tf.train.Saver()
 
     if config['load_model'] is not None: # restore model weights from previously saved model
-        if config['mode'] == 'adversarial':
+        if config['mode'] == 'adversarial_type_a':
             # Skip the layers we are going to train: 2 tasks X 2 layers X (kernel + bias) = 8
+            saver = tf.compat.v1.train.Saver(var_list=model_vars[:-8])
+        elif config['mode'] == 'adversarial' or config['mode'] == 'adversarial_type_b':
+            # Skip the layers we are going to train: 1 task X 3 layers X (kernel + bias) = 6
             saver = tf.compat.v1.train.Saver(var_list=model_vars[:-6])
         else:
             # Skip the layers we are going to train: 1 task X 2 layers X (kernel + bias) = 4
@@ -276,7 +244,7 @@ if __name__ == '__main__':
     fy = open(model_folder + 'train_log.tsv', 'a')
     if config['mode'] == 'regular':
         fy.write('Epoch\ttrain_cost\tval_cost\tepoch_time\tlearing_rate\n')
-    elif config['mode'] == 'adversarial':
+    elif 'adversarial'in config['mode']:
         fy.write('Epoch\ttrain_cost\ttrain_t_cost\ttrain_d_cost\tval_cost\tval_t_cost\tval_d_cost\tepoch_time\tlearing_rate\n')
 
     fy.close()
@@ -348,7 +316,7 @@ if __name__ == '__main__':
                         str(time.strftime('%Y-%m-%d %H:%M:%S',time.gmtime())), save_path))
                 cost_best_model = val_cost
 
-    elif config['mode'] == 'adversarial':
+    elif 'adversarial' in config['mode']:
         for i in range(config['epochs']):
             # training: do not train first epoch, to see random weights behaviour
             i, train_batch_streamer, sess, train_step, cost, t_cost, d_cost

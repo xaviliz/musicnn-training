@@ -6,25 +6,6 @@ warnings.filterwarnings('ignore')
 from scipy.fftpack import dct
 import essentia.standard as es
 
-KEY_DICT = {
-    "A" : [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    "Bb": [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    "B":  [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    "C":  [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-    "C#": [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-    "D":  [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-    "Eb": [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-    "E":  [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-    "F":  [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-    "F#": [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-    "G":  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
-    "Ab": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
-}
-
-TONALITY = {
-    'minor': [0],
-    'major': [1]
-}
 
 def get_epoch_time():
     return int((datetime.now() - datetime(1970,1,1)).total_seconds())
@@ -77,20 +58,6 @@ def compute_auc(true, estimated):
         except:
             print('failed!')
     return roc_auc, pr_auc
-
-
-def mel_2_mfcc(x, n=24, x_min=-1, x_max=1, headroom=.01):
-    d_time = dct(x, type=2, n=n + 1, axis=1, norm=None, overwrite_x=False)
-
-    # Remove first coefficient
-    d_time = d_time[:, 1:]
-
-    d = np.hstack([np.mean(d_time, axis=0), np.std(d_time, axis=0)])
-
-
-    return minmax_standarize(d, x_max=x_max,
-                                x_min=x_min,
-                                headroom=headroom)
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))

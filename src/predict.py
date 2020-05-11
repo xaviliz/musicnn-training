@@ -9,7 +9,7 @@ import tensorflow as tf
 from tqdm import tqdm
 import yaml
 from argparse import Namespace
-from data_loaders import data_gen_standard_abs_path as data_gen
+from data_loaders import data_gen_standard as data_gen
 
 
 TEST_BATCH_SIZE = 64
