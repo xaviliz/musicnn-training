@@ -4,7 +4,7 @@ from gradient_projection import gradient_projection
 
 
 def regular(y, config):
-    y = tf.compat.v1.layers.dense(inputs=tf.reshape(y, [-1, 30]),
+    y = tf.compat.v1.layers.dense(inputs=y,
                                     activation=None,
                                     units=config['num_classes_dataset'],
                                     kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
@@ -33,7 +33,7 @@ def adversarial_type_a(y, config):
         kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
 
     den = tf.compat.v1.layers.dense(inputs=d,
-                units=10,
+                units=config['coupling_layer_units'],
                 activation=tf.nn.relu,
                 kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
 
@@ -57,12 +57,12 @@ def adversarial_type_b(y, config):
     # Gradient projection layer
     y, d = gradient_projection(shared_dense, flipped)
 
-    y = tf.compat.v1.layers.dense(inputs=tf.reshape(y, [-1, 30]),
+    y = tf.compat.v1.layers.dense(inputs=tf.reshape(y, [-1, config['coupling_layer_units']]),
                                     activation=None,
                                     units=config['num_classes_dataset'],
                                     kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
 
-    d = tf.compat.v1.layers.dense(inputs=tf.reshape(d, [-1, 30]),
+    d = tf.compat.v1.layers.dense(inputs=tf.reshape(d, [-1, config['coupling_layer_units']]),
                         activation=None,
                         units=config['discriminator_dimensions'],
                         kernel_initializer=tf.contrib.layers.variance_scaling_initializer())

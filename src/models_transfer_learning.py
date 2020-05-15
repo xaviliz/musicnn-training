@@ -8,7 +8,10 @@ from flip_gradient import flip_gradient
 
 def define_model(x, is_training, config):
     model_num = config['model_number']
-    num_classes = config['num_classes_dataset']
+
+    num_classes = config['coupling_layer_units']
+    print('coupling layer size: {}'.format(num_classes))
+
     if model_num == 2:
         model = 'MTT_vgg'
     elif model_num == 11:
@@ -214,14 +217,14 @@ def backend(feature_map, is_training, num_classes, output_units, type):
     dense_dropout = tf.compat.v1.layers.dropout(bn_dense, rate=0.5, training=False)
 
     # output dense layer
-    ld = tf.compat.v1.layers.dense(inputs=dense_dropout,
-                           activation=tf.nn.relu,
-                           units=30)
-    # logits = tf.compat.v1.layers.dense(inputs=ld,
-    #                        activation=None,
-    #                        units=num_classes)
+    if not num_classes:
+        return dense_dropout, mean_pool, max_pool
+    else:
+        ld = tf.compat.v1.layers.dense(inputs=dense_dropout,
+                               activation=tf.nn.relu,
+                               units=num_classes)
 
-    return ld, mean_pool, max_pool
+        return ld, mean_pool, max_pool
 
 
 
@@ -287,10 +290,13 @@ def vgg(x, is_training, num_classes, num_filters=32):
 
     flat_pool5 = tf.compat.v1.layers.flatten(pool5)
     do_pool5 = tf.compat.v1.layers.dropout(flat_pool5, rate=0.5, training=is_training)
-    output = tf.compat.v1.layers.dense(inputs=do_pool5,
-                            activation=tf.nn.relu,
-                            units=30)
-    return output
+    
+    if not num_classes:
+        return do_pool5
+    else:
+        return tf.compat.v1.layers.dense(inputs=do_pool5,
+                                activation=tf.nn.relu,
+                                units=num_classes)
 
 
 def define_vggish_slim(x, is_training, num_classes):
@@ -441,10 +447,3 @@ def define_small_vggish_slim(x, is_training, num_classes):
     tf.sigmoid(logits, name='prediction')
 
     return tf.identity(logits, name='logits')
-
-def build_musicnn_disc(x, is_training, config):
-    import models as training_models
-
-    config['model_number'] = 11
-
-    return training_models.model_number(x, is_training, config)

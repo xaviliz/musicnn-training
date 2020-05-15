@@ -69,11 +69,13 @@ config_train:
     weight_decay: 1.0e-05
     n_folds: %(n_folds)s
     fold: %(fold)s
-
-    # lambda for reversal gradient models
-    mode : %(mode)s
-    lambda: 0.0001
-    discriminator_dimensions: 12
+    mode : %(mode)s  # regular, adversarial_a, adversarial_b
+    coupling_layer_units : 30  # units of the first layer after the TL embeddings. 0 to omit a coupling layer
+    task : labels  # labels, lowlevel_descriptors
+    lowlevel_descriptor : loudness
+    lambda: 1.0  # lambda for reversal gradient models
+    discriminator_dimensions: 1
+    discriminator_target: bpm
     mfcc_max:  39.399
     mfcc_min: -26.740
     mfcc_headroom: 0.1
