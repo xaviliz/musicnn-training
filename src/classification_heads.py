@@ -18,6 +18,11 @@ def adversarial_type_a(y, config):
     """
     d_ = tf.compat.v1.placeholder(tf.float32, [None, config['discriminator_dimensions']])
 
+    y = tf.compat.v1.layers.dense(inputs=y,
+        activation=None,
+        units=config['num_classes_dataset'],
+        kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
+    
     # RevGrad layer
     flipped = flip_gradient(y, config['lambda'])
 
@@ -27,17 +32,12 @@ def adversarial_type_a(y, config):
     y = tf.reshape(y, [-1, config['num_classes_dataset']])
     d = tf.reshape(d, [-1, config['num_classes_dataset']])
 
-    y = tf.compat.v1.layers.dense(inputs=y,
-        activation=None,
-        units=config['num_classes_dataset'],
-        kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
-
-    den = tf.compat.v1.layers.dense(inputs=d,
+    d = tf.compat.v1.layers.dense(inputs=d,
                 units=config['coupling_layer_units'],
                 activation=tf.nn.relu,
                 kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
 
-    d = tf.compat.v1.layers.dense(inputs=den,
+    d = tf.compat.v1.layers.dense(inputs=d,
         activation=None,
         units=config['discriminator_dimensions'],
         kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
