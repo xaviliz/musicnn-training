@@ -69,7 +69,7 @@ config_train:
     weight_decay: 1.0e-05
     n_folds: %(n_folds)s
     fold: %(fold)s
-    mode : %(mode)s  # regular, adversarial_a, adversarial_b
+    mode : %(mode)s  # regular, adversarial_type_a, adversarial_type_b
     coupling_layer_units : 30  # units of the first layer after the TL embeddings. 0 to omit a coupling layer
     task : labels  # labels, lowlevel_descriptors
     lowlevel_descriptor : loudness
