@@ -196,9 +196,9 @@ def get_features(data_folder, audio_repr_path):
         gt = np.array([gt])
 
 
-def get_essentia_spectrogram(config, data_folder, audio_repr_path):
+def get_spectrogram_alterated_loudness(config, data_folder, audio_repr_path):
     filename = get_audio_file(audio_repr_path)
-    gain = config['audio_effects']['gain']
+    gain = config['alteration_value']
     rep_filename = filename + str(gain) + '.npy'
 
     if os.path.exists(rep_filename):
@@ -215,9 +215,9 @@ def get_essentia_spectrogram(config, data_folder, audio_repr_path):
 
         return rep
 
-def get_essentia_spectrogram_bpm(config, data_folder, audio_repr_path):
+def get_spectrogram_alterated_bpm(config, data_folder, audio_repr_path):
     filename = get_audio_file(audio_repr_path)
-    bpm = config['audio_effects']['bpm']
+    bpm = config['alteration_value']
     rep_filename = filename + '_bpm_' + str(bpm) + '.npy'
 
     if os.path.exists(rep_filename):
@@ -236,9 +236,9 @@ def get_essentia_spectrogram_bpm(config, data_folder, audio_repr_path):
 
         return rep
 
-def get_essentia_spectrogram_key(config, data_folder, audio_repr_path):
+def get_spectrogram_alterated_key(config, data_folder, audio_repr_path):
     filename = get_audio_file(audio_repr_path)
-    key = config['audio_effects']['key']
+    key = config['alteration_value']
     rep_filename = filename + '_key_' + str(key) + '.npy'
 
     if os.path.exists(rep_filename):
