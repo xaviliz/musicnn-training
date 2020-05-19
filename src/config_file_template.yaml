@@ -70,14 +70,9 @@ config_train:
     n_folds: %(n_folds)s
     fold: %(fold)s
     mode : %(mode)s  # regular, adversarial_type_a, adversarial_type_b
-    coupling_layer_units : 30  # units of the first layer after the TL embeddings. 0 to omit a coupling layer
-    task : labels  # labels, lowlevel_descriptors
-    lowlevel_descriptor : loudness
     lambda: 1.0  # lambda for reversal gradient models
     discriminator_dimensions: 1
     discriminator_target: bpm
-    mfcc_max:  39.399
-    mfcc_min: -26.740
-    mfcc_headroom: 0.1
-    # mfcc_max:  2.
-    # mfcc_min: -2.
+    coupling_layer_units : 100  # units of the first layer after the TL embeddings. 0 to omit a coupling layer
+    task : %(task)s  # labels, lowlevel_descriptors
+    lowlevel_descriptor : loudness
