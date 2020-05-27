@@ -115,7 +115,7 @@ def get_loudness(data_folder, audio_repr_path):
         loudness = np.load(loudness_file)
     else:
         descriptors_file = filepath[:-3] + '_descriptors.json'
-        descriptors = get_descripors(audio_repr_path, descriptors_file)
+        descriptors = get_descriptors(audio_repr_path, descriptors_file)
         loudness = loudness_encriptor(descriptors['lowlevel.loudness_ebu128.integrated'])
         np.save(loudness_file, loudness)
     return loudness
