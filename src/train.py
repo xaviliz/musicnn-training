@@ -15,6 +15,15 @@ from feature_functions import set_lowlevel_task
 
 config_file = Namespace(**yaml.load(open('config_file.yaml'), Loader=yaml.SafeLoader))
 
+def write_summary(value, tag, step, writer):
+    # Create a new Summary object with your measure
+    summary = tf.Summary()
+    summary = tf.Summary(value=[
+        tf.Summary.Value(tag=tag, simple_value=value),
+    ])
+
+    writer.add_summary(summary, step)
+
 def tf_define_model_and_cost(config):
     # tensorflow: define the model
     with tf.name_scope('model'):
@@ -217,6 +226,9 @@ if __name__ == '__main__':
 
     update_on_train = True
 
+    train_file_writer = tf.summary.FileWriter(os.path.join(model_folder, 'logs', 'train'), sess.graph)
+    val_file_writer = tf.summary.FileWriter(os.path.join(model_folder, 'logs', 'val'), sess.graph)
+
     # tensorflow: create a session to run the tensorflow graph
     sess.run(tf.global_variables_initializer())
     saver = tf.train.Saver()
@@ -353,6 +365,17 @@ if __name__ == '__main__':
             val_t_cost = np.mean(array_val_t_cost)
             val_d_cost = np.mean(array_val_d_cost)
             epoch_time = time.time() - start_time
+
+            write_summary(train_cost, 'loss_total', i, train_file_writer)
+            write_summary(train_t_cost, 'loss_task', i, train_file_writer)
+            write_summary(train_d_cost, 'loss_discriminator', i, train_file_writer)
+            train_file_writer.flush()
+
+            write_summary(val_cost, 'loss_total', i, val_file_writer)
+            write_summary(val_t_cost, 'loss_task', i, val_file_writer)
+            write_summary(val_d_cost, 'loss_discriminator', i, val_file_writer)
+            val_file_writer.flush()
+
             fy = open(model_folder + 'train_log.tsv', 'a')
             fy.write('%d\t%g\t%g\t%g\t%g\t%g\t%g\t%gs\t%g\n' % (i+1, train_cost, train_t_cost, train_d_cost, val_cost, val_t_cost, val_d_cost, epoch_time, tmp_learning_rate))
             fy.close()
