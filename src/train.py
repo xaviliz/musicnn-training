@@ -51,6 +51,8 @@ def tf_define_model_and_cost(config):
         normalized_y = tf.nn.sigmoid(y)
         print(normalized_y.get_shape())
 
+        normalized_d = tf.nn.sigmoid(d)
+
     print('Number of parameters of the model: ' + str(shared.count_params(tf.trainable_variables()))+'\n')
 
     # tensorflow: define cost function
@@ -70,13 +72,16 @@ def tf_define_model_and_cost(config):
 
             cost = t_cost + d_cost
 
+            acc_task = tf.metrics.accuracy(y_, tf.compat.v1.round(normalized_y))
+            acc_discriminator = tf.metrics.accuracy(d_, tf.compat.v1.round(normalized_d))
+
     # print all trainable variables, for debugging
     model_vars = [v for v in tf.global_variables()]
     for variables in tf.trainable_variables():
         print(variables)
 
     if 'adversarial' in config['mode']:
-        return [x, y_, is_train, y, normalized_y, (cost, t_cost, d_cost), d_, model_vars]
+        return [x, y_, is_train, y, normalized_y, (cost, t_cost, d_cost, acc_task, acc_discriminator), d_, model_vars]
     else:
         return [x, y_, is_train, y, normalized_y, cost, model_vars]
 
@@ -167,7 +172,7 @@ if __name__ == '__main__':
     # tensorflow: define model and cost
     if 'adversarial' in config['mode']:
         [x, y_, is_train, y, normalized_y, costs, d_, model_vars] = tf_define_model_and_cost(config)
-        cost, t_cost, d_cost = costs
+        cost, t_cost, d_cost, acc_task, acc_discriminator = costs
     else:
         [x, y_, is_train, y, normalized_y, cost, model_vars] = tf_define_model_and_cost(config)
 
@@ -231,6 +236,8 @@ if __name__ == '__main__':
 
     # tensorflow: create a session to run the tensorflow graph
     sess.run(tf.global_variables_initializer())
+    # Required by the accuracy metrics
+    sess.run(tf.local_variables_initializer())
     saver = tf.train.Saver()
 
     if config['load_model'] is not None: # restore model weights from previously saved model
@@ -333,28 +340,42 @@ if __name__ == '__main__':
             # training: do not train first epoch, to see random weights behaviour
             i, train_batch_streamer, sess, train_step, cost, t_cost, d_cost
             start_time = time.time()
-            array_train_cost = []
-            array_train_t_cost = []
-            array_train_d_cost = []
+
+            array_train_cost, array_train_t_cost, array_train_d_cost = [], [], []
+            array_train_t_acc, array_train_d_acc = [], []
             if i != 0:
                 for train_batch in train_batch_streamer:
                     tf_start = time.time()
-                    _, train_cost, train_t_cost, train_d_cost = sess.run([train_step, cost, t_cost, d_cost],
-                                                feed_dict={x: train_batch['X'], y_: train_batch['Y'], d_: train_batch['D'], lr: tmp_learning_rate, is_train: True})
+                    (_, train_cost, train_t_cost, train_d_cost,
+                     train_t_acc, train_d_acc) = sess.run([train_step, cost, t_cost, d_cost,
+                                                            acc_task, acc_discriminator],
+                                                           feed_dict={x: train_batch['X'],
+                                                                      y_: train_batch['Y'],
+                                                                      d_: train_batch['D'],
+                                                                      lr: tmp_learning_rate,
+                                                                      is_train: True})
                     array_train_cost.append(train_cost)
                     array_train_t_cost.append(train_t_cost)
                     array_train_d_cost.append(train_d_cost)
+                    array_train_t_acc.append(train_t_acc)
+                    array_train_d_acc.append(train_d_acc)
 
             # validation
-            array_val_cost = []
-            array_val_t_cost = []
-            array_val_d_cost = []
+            array_val_cost, array_val_t_cost, array_val_d_cost = [], [], []
+            array_val_t_acc, array_val_d_acc = [], []
             for val_batch in val_batch_streamer:
-                val_cost, val_t_cost, val_d_cost = sess.run([cost, t_cost, d_cost],
-                                    feed_dict={x: val_batch['X'], y_: val_batch['Y'], d_: val_batch['D'], is_train: False})
+                (val_cost, val_t_cost, val_d_cost,
+                 val_t_acc, val_d_acc) = sess.run([cost, t_cost, d_cost,
+                                                   acc_task, acc_discriminator],
+                                                  feed_dict={x: val_batch['X'],
+                                                             y_: val_batch['Y'],
+                                                             d_: val_batch['D'],
+                                                             is_train: False})
                 array_val_cost.append(val_cost)
                 array_val_t_cost.append(val_t_cost)
                 array_val_d_cost.append(val_d_cost)
+                array_val_t_acc.append(val_t_acc)
+                array_val_d_acc.append(val_d_acc)
 
             # Keep track of average loss of the epoch
             train_cost = np.mean(array_train_cost)
@@ -364,16 +385,27 @@ if __name__ == '__main__':
             val_cost = np.mean(array_val_cost)
             val_t_cost = np.mean(array_val_t_cost)
             val_d_cost = np.mean(array_val_d_cost)
+
+            # Average accuracies
+            train_t_acc = np.mean(array_train_t_acc)
+            train_d_acc = np.mean(array_train_d_acc)
+            val_t_acc = np.mean(array_val_t_acc)
+            val_d_acc = np.mean(array_val_d_acc)
+
             epoch_time = time.time() - start_time
 
             write_summary(train_cost, 'loss_total', i, train_file_writer)
             write_summary(train_t_cost, 'loss_task', i, train_file_writer)
             write_summary(train_d_cost, 'loss_discriminator', i, train_file_writer)
+            write_summary(train_t_acc, 'acc_task', i, train_file_writer)
+            write_summary(train_d_acc, 'acc_discriminator', i, train_file_writer)
             train_file_writer.flush()
 
             write_summary(val_cost, 'loss_total', i, val_file_writer)
             write_summary(val_t_cost, 'loss_task', i, val_file_writer)
             write_summary(val_d_cost, 'loss_discriminator', i, val_file_writer)
+            write_summary(val_t_acc, 'acc_task', i, val_file_writer)
+            write_summary(val_d_acc, 'acc_discriminator', i, val_file_writer)
             val_file_writer.flush()
 
             fy = open(model_folder + 'train_log.tsv', 'a')
