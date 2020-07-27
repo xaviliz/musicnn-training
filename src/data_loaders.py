@@ -40,6 +40,10 @@ def get_audio_rep(config, audio_repr_path):
         return np.log10(audio_rep + np.finfo(float).eps)
     elif  config['pre_processing'] == 'logC':
         return np.log10(10000 * audio_rep + 1)
+    elif  config['pre_processing'] == '':
+        return audio_rep
+    else:
+        raise('get_audio_rep: Preprocessing not available.')
 
 def data_gen_standard(id, relative_audio_repr_path, gt, pack):
     # Support both the absolute and relative path input cases
