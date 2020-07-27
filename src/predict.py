@@ -39,6 +39,7 @@ if __name__ == '__main__':
     # Use the -l functionality to ensamble models: python arg.py -l 1234 2345 3456 4567
     parser = argparse.ArgumentParser()
     parser.add_argument('index_file')
+    parser.add_argument('groundtruth_file')
     parser.add_argument('model_fol')
     parser.add_argument('predictions_file')
     parser.add_argument('-l', '--list', nargs='+', help='List of models to evaluate', required=True)
@@ -46,15 +47,22 @@ if __name__ == '__main__':
     args = parser.parse_args()
     models = args.list
     index_file = args.index_file
+    groundtruth_file = args.groundtruth_file
     model_fol = args.model_fol
     predictions_file = args.predictions_file
 
     # load all audio representation paths
     [audio_repr_paths, id2audio_repr_path] = shared.load_id2path(index_file)
 
-    ids = id2audio_repr_path.keys()
+    index_ids = set(id2audio_repr_path.keys())
 
+    gt_ids = set(json.load(open(groundtruth_file, 'r')).keys())
 
+    ids = list(index_ids.intersection(gt_ids))
+
+    print('{} ids found in the index file'.format(len(index_ids)))
+    print('{} ids found in the groundtruth file'.format(len(gt_ids)))
+    print('using {} intersecting ids'.format(len(ids)))
 
     for model in models:
         experiment_folder = os.path.join(model_fol, str(model))
@@ -72,8 +80,8 @@ if __name__ == '__main__':
         batch_streamer = pescador.ZMQStreamer(batch_streamer)
 
         # tensorflow: define model and cost
-        fuckin_graph = tf.Graph()
-        with fuckin_graph.as_default():
+        graph = tf.Graph()
+        with graph.as_default():
             sess = tf.Session()
 
             [x, y_, is_train, y, normalized_y, cost, model_vars] = train.tf_define_model_and_cost(config)
