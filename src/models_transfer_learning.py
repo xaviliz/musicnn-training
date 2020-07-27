@@ -9,8 +9,14 @@ from flip_gradient import flip_gradient
 def define_model(x, is_training, config):
     model_num = config['model_number']
 
-    num_classes = config['coupling_layer_units']
-    print('coupling layer size: {}'.format(num_classes))
+    if model_num == 20 or model_num == 21:
+        num_classes = config['num_classes']
+    else:
+        if 'coupling_layer_units' not in config:
+            num_classes = 100
+        else:
+            num_classes = config['coupling_layer_units']
+        print('coupling layer size: {}'.format(num_classes))
 
     if model_num == 2:
         model = 'MTT_vgg'
