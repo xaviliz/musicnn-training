@@ -25,11 +25,16 @@ def write_summary(value, tag, step, writer):
     writer.add_summary(summary, step)
 
 def tf_define_model_and_cost(config):
+        return model_and_cost(config, tf.compat.v1.placeholder(tf.bool))
+
+def tf_define_model_and_cost_freeze(config):
+        return model_and_cost(config, False)
+
+def model_and_cost(config, is_train):
     # tensorflow: define the model
     with tf.name_scope('model'):
         x = tf.compat.v1.placeholder(tf.float32, [None, config['xInput'], config['yInput']])
         y_ = tf.compat.v1.placeholder(tf.float32, [None, config['num_classes_dataset']])
-        is_train = tf.compat.v1.placeholder(tf.bool)
 
         # choose between transfer learning or fully trainable models
         if config['load_model'] is not None:
