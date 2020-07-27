@@ -72,3 +72,36 @@ def adversarial_type_b(y, config):
                         units=config['discriminator_dimensions'],
                         kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
     return y, d, d_
+
+def adversarial_grl(y, config):
+    """ Adversarial heads with Gradient reversal layer
+    A common layer conected to the feature extractor with 2 heads,
+    one for the classification and other for the discrimination task.
+    """
+    coupling_layer = y
+    d_ = tf.compat.v1.placeholder(tf.float32, [None, config['discriminator_dimensions']])
+
+    # RevGrad layer
+    lam = tf.placeholder(tf.float32)
+    flipped = flip_gradient(coupling_layer, lam)
+
+    y = tf.compat.v1.layers.dense(inputs=coupling_layer,
+                                  activation=tf.nn.relu,
+                                  units=config['coupling_layer_units'],
+                                  kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
+
+    y = tf.compat.v1.layers.dense(inputs=y,
+                                  activation=None,
+                                  units=config['num_classes_dataset'],
+                                  kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
+
+    d = tf.compat.v1.layers.dense(inputs=flipped,
+                                  activation=tf.nn.relu,
+                                  units=config['coupling_layer_units'],
+                                  kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
+
+    d = tf.compat.v1.layers.dense(inputs=d,
+                                  activation=None,
+                                  units=config['discriminator_dimensions'],
+                                  kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
+    return y, d, d_, lam
