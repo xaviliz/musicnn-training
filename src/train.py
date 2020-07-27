@@ -56,7 +56,8 @@ def model_and_cost(config, is_train):
         normalized_y = tf.nn.sigmoid(y)
         print(normalized_y.get_shape())
 
-        normalized_d = tf.nn.sigmoid(d)
+        if 'adversarial' in config['mode']:
+            normalized_d = tf.nn.sigmoid(d)
 
     print('Number of parameters of the model: ' + str(shared.count_params(tf.trainable_variables()))+'\n')
 
