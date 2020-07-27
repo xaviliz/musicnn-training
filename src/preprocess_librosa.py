@@ -2,11 +2,14 @@ import os
 import librosa
 from joblib import Parallel, delayed
 import json
-import config_file
 import argparse
 import pickle
 import numpy as np
 from pathlib import Path
+import yaml
+from argparse import Namespace
+
+config_file = Namespace(**yaml.load(open('config_file.yaml')))
 
 DEBUG = False
 
@@ -80,7 +83,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     config = config_file.config_preprocess[args.configurationID]
 
-    config['audio_representation_folder'] = "audio_representation/%s__%s/" % (config['identifier'], config['type'])
+    config['audio_representation_folder'] = "%s__%s/" % (config['identifier'], config['type'])
     # set audio representations folder
     if not os.path.exists(config_file.DATA_FOLDER + config['audio_representation_folder']):
         os.makedirs(config_file.DATA_FOLDER + config['audio_representation_folder'])
@@ -91,7 +94,7 @@ if __name__ == '__main__':
 
     # list audios to process: according to 'index_file'
     files_to_convert = []
-    f = open(config_file.DATA_FOLDER + config["index_file"])
+    f = open(config_file.DATA_FOLDER + config["index_audio_file"])
     for line in f.readlines():
         id, audio = line.strip().split("\t")
         audio_repr = audio[:audio.rfind(".")] + ".pk" # .npy or .pk
