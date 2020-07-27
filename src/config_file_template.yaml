@@ -53,7 +53,8 @@ config_train:
     gt_train: %(gt_train)s
     gt_val: %(gt_val)s
     gt_test: %(gt_test)s
-    learning_rate: 0.0001
+    index_repr_regularize: ''  # index with samples to use for regularization (unsupervised domain adaptation) 
+    learning_rate: 0.001
     load_model: %(load_model)s
     model_number: %(model_number)s
     n_frames: 187
@@ -70,9 +71,9 @@ config_train:
     n_folds: %(n_folds)s
     fold: %(fold)s
     mode : %(mode)s  # regular, adversarial_type_a, adversarial_type_b
-    lambda: 1.0  # lambda for reversal gradient models
+    lambda: %(lambda)s  # lambda for reversal gradient models
     discriminator_dimensions: 1
-    discriminator_target: bpm
+    discriminator_target: dataset
     coupling_layer_units : 100  # units of the first layer after the TL embeddings. 0 to omit a coupling layer
     task : %(task)s  # labels, lowlevel_descriptors
     lowlevel_descriptor : loudness
