@@ -27,7 +27,8 @@ def adversarial_type_a(y, config):
         kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
     
     # RevGrad layer
-    flipped = flip_gradient(y, config['lambda'])
+    lam = tf.placeholder(tf.float32)
+    flipped = flip_gradient(y, lam)
 
     # Gradient projection layer
     y, d = gradient_projection(y, flipped)
@@ -55,7 +56,8 @@ def adversarial_type_b(y, config):
     d_ = tf.compat.v1.placeholder(tf.float32, [None, config['discriminator_dimensions']])
 
     # RevGrad layer
-    flipped = flip_gradient(shared_dense, config['lambda'])
+    lam = tf.placeholder(tf.float32)
+    flipped = flip_gradient(shared_dense, lam)
 
     # Gradient projection layer
     y, d = gradient_projection(shared_dense, flipped)
