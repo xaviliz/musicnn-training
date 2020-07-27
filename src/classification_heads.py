@@ -4,11 +4,14 @@ from gradient_projection import gradient_projection
 
 
 def regular(y, config):
-    y = tf.compat.v1.layers.dense(inputs=y,
+    if config['model_number'] == 20:
+        # VGGish models already defined their classificaton head
+        return y
+    else:
+        return tf.compat.v1.layers.dense(inputs=y,
                                     activation=None,
                                     units=config['num_classes_dataset'],
                                     kernel_initializer=tf.contrib.layers.variance_scaling_initializer())
-    return y
 
 def adversarial_type_a(y, config):
     """ type A adversarial heads
