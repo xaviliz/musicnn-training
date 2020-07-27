@@ -85,7 +85,9 @@ def data_gen_standard(id, relative_audio_repr_path, gt, pack):
 
 def data_gen_discriminator(id, audio_repr_path, gt, pack):
     [config, sampling, param_sampling, augmentation, data_folder] = pack
-    audio_repr_path = data_folder + audio_repr_path
+    if not '/home/' in audio_repr_path:
+        # it's a relative path
+        audio_repr_path = data_folder + audio_repr_path
 
     try:
         if config['discriminator_target'] == 'random':
