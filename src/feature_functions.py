@@ -2,6 +2,7 @@ import os
 import numpy as np
 import essentia.standard as es
 from subprocess import call
+from scipy.fftpack import dct
 
 
 # BASE_PATH = '/mnt/mtgdb-audio/stable/'
@@ -257,3 +258,13 @@ def get_spectrogram_alterated_key(config, data_folder, audio_repr_path):
         np.save(rep_filename, rep)
 
         return rep
+
+def compute_key(audio_file, key_file):
+    audio = es.MonoLoader(filename=audio_file)()
+    key, scale, strength = es.KeyExtractor()(audio)
+
+    key_vect = np.array(KEY_DICT[key] + TONALITY[scale])
+
+    np.save(key_file, key_vect)
+
+    return key_vect

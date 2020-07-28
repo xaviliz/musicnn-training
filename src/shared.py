@@ -3,8 +3,6 @@ from datetime import datetime
 from sklearn import metrics
 import warnings
 warnings.filterwarnings('ignore')
-from scipy.fftpack import dct
-import essentia.standard as es
 
 
 def get_epoch_time():
@@ -107,13 +105,3 @@ def compute_accuracy(y_true, y_pred):
         y_pred = np.round(np.squeeze(y_pred))
 
     return metrics.balanced_accuracy_score(y_true, y_pred)
-
-def compute_key(audio_file, key_file):
-    audio = es.MonoLoader(filename=audio_file)()
-    key, scale, strength = es.KeyExtractor()(audio)
-
-    key_vect = np.array(KEY_DICT[key] + TONALITY[scale])
-
-    np.save(key_file, key_vect)
-
-    return key_vect
