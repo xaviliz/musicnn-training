@@ -47,7 +47,7 @@ config_preprocess:
 
 config_train:
   spec:
-    audio_representation_folder: audio_representation/
+    audio_representation_folder: %(audio_representation_folder)s
     batch_size: 32
     epochs: %(epochs)s
     gt_train: %(gt_train)s

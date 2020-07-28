@@ -94,7 +94,6 @@ def model_and_cost(config, is_train):
 
 
 if __name__ == '__main__':
-
     # load config parameters defined in 'config_file.py'
     parser = argparse.ArgumentParser()
     parser.add_argument('configuration',
@@ -106,9 +105,7 @@ if __name__ == '__main__':
     single_batch = args.single_batch
     number_samples = args.number_samples
 
-    # load config parameters used in 'preprocess_librosa.py',
-    config['audio_representation_folder'] = "%s__%s/" % (config_file.config_preprocess['mtgdb_spec']['identifier'],
-                                                         config_file.config_preprocess['mtgdb_spec']['type'])
+    # load config parameters used in 'preprocess_essentia.py'
     config_json = config_file.DATA_FOLDER + config['audio_representation_folder'] + 'config.json'
     with open(config_json, "r") as f:
         params = json.load(f)
