@@ -106,7 +106,7 @@ if __name__ == '__main__':
     number_samples = args.number_samples
 
     # load config parameters used in 'preprocess_essentia.py'
-    config_json = config_file.DATA_FOLDER + config['audio_representation_folder'] + 'config.json'
+    config_json = os.path.join(config['audio_representation_folder'], 'config.json')
     with open(config_json, "r") as f:
         params = json.load(f)
     config['audio_rep'] = params
