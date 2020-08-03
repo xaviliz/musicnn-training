@@ -295,7 +295,7 @@ def vgg(x, is_training, num_classes, num_filters=32):
     pool5 = tf.compat.v1.layers.max_pooling2d(inputs=bn_conv5, pool_size=[4, 4], strides=[4, 4])
 
     flat_pool5 = tf.compat.v1.layers.flatten(pool5)
-    do_pool5 = tf.compat.v1.layers.dropout(flat_pool5, rate=0.5, training=is_training)
+    do_pool5 = tf.compat.v1.layers.dropout(flat_pool5, rate=0.5, training=non_trainable)
     
     if not num_classes:
         return do_pool5
