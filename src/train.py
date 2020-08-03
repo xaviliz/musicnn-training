@@ -105,6 +105,8 @@ if __name__ == '__main__':
     single_batch = args.single_batch
     number_samples = args.number_samples
 
+    np.random.seed(seed=config['seed'])
+
     # load config parameters used in 'preprocess_essentia.py'
     config_json = os.path.join(config['audio_representation_folder'], 'config.json')
     with open(config_json, "r") as f:

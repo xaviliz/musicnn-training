@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-def dense_cnns(front_end_output, is_training, num_filt, trainable=True):
+def dense_cnns(front_end_output, is_training, num_filt, config, trainable=True):
 
     # conv layer 1 - adapting dimensions
     front_end_pad = tf.pad(front_end_output, [[0, 0], [3, 3], [0, 0]], "CONSTANT")
@@ -10,7 +10,7 @@ def dense_cnns(front_end_output, is_training, num_filt, trainable=True):
                              kernel_size=7,
                              padding="valid",
                              activation=tf.nn.relu,
-                             kernel_initializer=tf.contrib.layers.variance_scaling_initializer(),
+                             kernel_initializer=tf.contrib.layers.variance_scaling_initializer(seed=config['seed']),
                              trainable=trainable)
 
     if not trainable:
@@ -25,7 +25,7 @@ def dense_cnns(front_end_output, is_training, num_filt, trainable=True):
                              kernel_size=7,
                              padding="valid",
                              activation=tf.nn.relu,
-                             kernel_initializer=tf.contrib.layers.variance_scaling_initializer(),
+                             kernel_initializer=tf.contrib.layers.variance_scaling_initializer(seed=config['seed']),
                              trainable=trainable)
     bn_conv2 = tf.compat.v1.layers.batch_normalization(conv2, training=is_training, trainable=trainable)
     res_conv2 = tf.add(conv2, bn_conv1)
@@ -37,7 +37,7 @@ def dense_cnns(front_end_output, is_training, num_filt, trainable=True):
                              kernel_size=7,
                              padding="valid",
                              activation=tf.nn.relu,
-                             kernel_initializer=tf.contrib.layers.variance_scaling_initializer(),
+                             kernel_initializer=tf.contrib.layers.variance_scaling_initializer(seed=config['seed']),
                              trainable=trainable)
     bn_conv3 = tf.compat.v1.layers.batch_normalization(conv3, training=is_training, trainable=trainable)
     res_conv3 = tf.add(conv3, res_conv2)

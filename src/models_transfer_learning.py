@@ -35,7 +35,7 @@ def define_model(x, is_training, config):
         return build_musicnn(x, is_training, num_classes, config, num_filt_midend=64, num_units_backend=200)
 
     elif model == 'MTT_vgg':
-        return vgg(x, is_training, num_classes, 128)
+        return vgg(x, is_training, num_classes, config, 128)
 
     elif model == 'MSD_musicnn':
         return build_musicnn(x, is_training, num_classes, config, num_filt_midend=64, num_units_backend=200)
@@ -44,7 +44,7 @@ def define_model(x, is_training, config):
         return build_musicnn(x, is_training, num_classes, config, num_filt_midend=512, num_units_backend=500)
 
     elif model == 'MSD_vgg':
-        return vgg(x, is_training, num_classes, 128)
+        return vgg(x, is_training, num_classes, config, 128)
 
     elif model == 'audioset_vgg':
         return define_vggish_slim(x, is_training, num_classes)
@@ -73,7 +73,7 @@ def build_musicnn(x, is_training, num_classes, config, num_filt_frontend=1.6, nu
     midend_features = tf.concat(midend_features_list, 2)
 
     ### back-end ### temporal pooling
-    ld, mean_pool, max_pool = backend(midend_features, is_training, num_classes, num_units_backend, type='globalpool_dense')
+    ld, mean_pool, max_pool = backend(midend_features, is_training, num_classes, num_units_backend, config, type='globalpool_dense')
 
     # [extract features] temporal and timbral features from the front-end
     timbral = tf.concat([frontend_features_list[0], frontend_features_list[1]], 2)
@@ -204,7 +204,7 @@ def midend(front_end_output, is_training, num_filt):
     return [front_end_output, bn_conv1_t, res_conv2, res_conv3]
 
 
-def backend(feature_map, is_training, num_classes, output_units, type):
+def backend(feature_map, is_training, num_classes, output_units, config, type):
 
     # temporal pooling
     max_pool = tf.reduce_max(feature_map, axis=1)
@@ -228,13 +228,14 @@ def backend(feature_map, is_training, num_classes, output_units, type):
     else:
         ld = tf.compat.v1.layers.dense(inputs=dense_dropout,
                                activation=tf.nn.relu,
-                               units=num_classes)
+                               units=num_classes,
+                               kernel_initializer=tf.contrib.layers.variance_scaling_initializer(seed=config['seed']))
 
         return ld, mean_pool, max_pool
 
 
 
-def vgg(x, is_training, num_classes, num_filters=32):
+def vgg(x, is_training, num_classes, config, num_filters=32):
     non_trainable = False
 
     input_layer = tf.expand_dims(x, 3)
@@ -302,7 +303,8 @@ def vgg(x, is_training, num_classes, num_filters=32):
     else:
         return tf.compat.v1.layers.dense(inputs=do_pool5,
                                 activation=tf.nn.relu,
-                                units=num_classes)
+                                units=num_classes,
+                                kernel_initializer=tf.contrib.layers.variance_scaling_initializer(seed=config['seed']))
 
 
 def define_vggish_slim(x, is_training, num_classes):
