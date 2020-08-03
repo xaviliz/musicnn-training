@@ -63,13 +63,13 @@ def do_process(files, index):
         # compute audio representation (pre-processing)
         length = compute_audio_repr(audio_file, audio_repr_file)
         # index.tsv writing
-        fw = open(config_file.DATA_FOLDER + config['audio_representation_folder'] + "index_" + str(config['machine_i']) + ".tsv", "a")
+        fw = open(audio_representation_folder + "index_" + str(config['machine_i']) + ".tsv", "a")
         fw.write("%s\t%s\t%s\n" % (id, audio_repr_file[len(config_file.DATA_FOLDER):], audio_file[len(config_file.DATA_FOLDER):]))
         fw.close()
         print(str(index) + '/' + str(len(files)) + ' Computed: %s' % audio_file)
 
     except Exception as e:
-        ferrors = open(config_file.DATA_FOLDER + config['audio_representation_folder'] + "errors" + str(config['machine_i']) + ".txt", "a")
+        ferrors = open(audio_representation_folder + "errors" + str(config['machine_i']) + ".txt", "a")
         ferrors.write(audio_file + "\n")
         ferrors.write(str(e))
         ferrors.close()
@@ -96,9 +96,11 @@ if __name__ == '__main__':
     args = parser.parse_args()
     config = config_file.config_preprocess[args.configurationID]
 
+    audio_representation_folder = config_file.config_train['spec']['audio_representation_folder']
+
     # set audio representations folder
-    if not os.path.exists(config_file.DATA_FOLDER + config['audio_representation_folder']):
-        os.makedirs(config_file.DATA_FOLDER + config['audio_representation_folder'])
+    if not os.path.exists(audio_representation_folder):
+        os.makedirs(audio_representation_folder)
     else:
         print("WARNING: already exists a folder with this name!"
               "\nThis is expected if you are splitting computations into different machines.."
@@ -111,17 +113,17 @@ if __name__ == '__main__':
         id, audio = line.strip().split("\t")
         audio_repr = audio[:audio.rfind(".")] + ".pk" # .npy or .pk
         files_to_convert.append((id, config['audio_folder'] + audio,
-                                 config_file.DATA_FOLDER + config['audio_representation_folder'] + audio_repr))
+                                 audio_representation_folder + audio_repr))
 
     # compute audio representation
     if config['machine_i'] == config['n_machines'] - 1:
         process_files(files_to_convert[int(len(files_to_convert) / config['n_machines']) * (config['machine_i']):])
         # we just save parameters once! In the last thread run by n_machine-1!
-        json.dump(config, open(config_file.DATA_FOLDER + config['audio_representation_folder'] + "config.json", "w"))
+        json.dump(config, open(audio_representation_folder + "config.json", "w"))
     else:
         first_index = int(len(files_to_convert) / config['n_machines']) * (config['machine_i'])
         second_index = int(len(files_to_convert) / config['n_machines']) * (config['machine_i'] + 1)
         assigned_files = files_to_convert[first_index:second_index]
         process_files(assigned_files)
 
-    print("Audio representation folder: " + config_file.DATA_FOLDER + config['audio_representation_folder'])
+    print("Audio representation folder: " + audio_representation_folder)
