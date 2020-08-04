@@ -43,6 +43,7 @@ if __name__ == '__main__':
     parser.add_argument('model_fol')
     parser.add_argument('predictions_file')
     parser.add_argument('-l', '--list', nargs='+', help='List of models to evaluate', required=True)
+    parser.add_argument('data_dir')
 
     args = parser.parse_args()
     models = args.list
@@ -50,9 +51,11 @@ if __name__ == '__main__':
     groundtruth_file = args.groundtruth_file
     model_fol = args.model_fol
     predictions_file = args.predictions_file
+    data_dir = args.data_dir
 
     # load all audio representation paths
-    [audio_repr_paths, id2audio_repr_path] = shared.load_id2path(index_file)
+    [_, id2audio_repr_path] = shared.load_id2path(index_file)
+    id2audio_repr_path = {k: os.path.join(data_dir, v) for k, v in id2audio_repr_path.items()}
 
     index_ids = set(id2audio_repr_path.keys())
 
