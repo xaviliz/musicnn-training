@@ -15,7 +15,6 @@ from data_loaders import data_gen_standard as data_gen
 TEST_BATCH_SIZE = 64
 
 def prediction(batch_dispatcher, tf_vars, array_cost, pred_array, id_array):
-
     [sess, normalized_y, cost, x, y_, is_train] = tf_vars
     for batch in tqdm(batch_dispatcher):
         pred, cost_pred = sess.run([normalized_y, cost], feed_dict={x: batch['X'],
@@ -40,18 +39,18 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('index_file')
     parser.add_argument('groundtruth_file')
-    parser.add_argument('model_fol')
+    parser.add_argument('model_dir')
+    parser.add_argument('data_dir')
     parser.add_argument('predictions_file')
     parser.add_argument('-l', '--list', nargs='+', help='List of models to evaluate', required=True)
-    parser.add_argument('data_dir')
 
     args = parser.parse_args()
     models = args.list
     index_file = args.index_file
     groundtruth_file = args.groundtruth_file
-    model_fol = args.model_fol
-    predictions_file = args.predictions_file
+    model_dir = args.model_dir
     data_dir = args.data_dir
+    predictions_file = args.predictions_file
 
     # load all audio representation paths
     [_, id2audio_repr_path] = shared.load_id2path(index_file)
@@ -68,7 +67,7 @@ if __name__ == '__main__':
     print('using {} intersecting ids'.format(len(ids)))
 
     for model in models:
-        experiment_folder = os.path.join(model_fol, str(model))
+        experiment_folder = os.path.join(model_dir, str(model))
         config = json.load(open(os.path.join(experiment_folder, 'config.json')))
         config['mode'] = 'regular'
 
