@@ -5,6 +5,7 @@ src/*.pyc
 src/*.sub
 src/*.out
 src/*.err
+src/config_file.yaml
 .idea/
 v_env
 data/train/
