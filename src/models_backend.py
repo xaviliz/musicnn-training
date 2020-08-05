@@ -58,14 +58,14 @@ def temporal_pooling(feature_map, is_training, num_classes_dataset, num_units_ba
     # dense layer with droupout
     flat_pool = tf.contrib.layers.flatten(tmp_pool)
     flat_pool = tf.compat.v1.layers.batch_normalization(flat_pool, training=is_training, trainable=trainable)
-    flat_pool_dropout = tf.layers.dropout(flat_pool, rate=0.5, training=is_training, config['seed'])
+    flat_pool_dropout = tf.layers.dropout(flat_pool, rate=0.5, training=is_training, seed=config['seed'])
     dense = tf.compat.v1.layers.dense(inputs=flat_pool_dropout,
                             units=num_units_backend,
                             activation=tf.nn.relu,
                             kernel_initializer=tf.contrib.layers.variance_scaling_initializer(seed=config['seed']),
                             trainable=trainable)
     bn_dense = tf.compat.v1.layers.batch_normalization(dense, training=is_training, trainable=trainable)
-    dense_dropout = tf.compat.v1.layers.dropout(bn_dense, rate=0.5, training=is_training, config['seed'])
+    dense_dropout = tf.compat.v1.layers.dropout(bn_dense, rate=0.5, training=is_training, seed=config['seed'])
 
 
     # Smaller dense layer shared betwen tasks/

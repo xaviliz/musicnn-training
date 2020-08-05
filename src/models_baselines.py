@@ -55,7 +55,7 @@ def vgg(x, is_training, config, num_filters=32):
     pool1 = tf.compat.v1.layers.max_pooling2d(inputs=bn_conv1, pool_size=[4, 1], strides=[2, 2])
     print('pool1: ' + str(pool1.get_shape))
 
-    do_pool1 = tf.compat.v1.layers.dropout(pool1, rate=0.25, training=is_training, config['seed'])
+    do_pool1 = tf.compat.v1.layers.dropout(pool1, rate=0.25, training=is_training, seed=config['seed'])
     conv2 = tf.compat.v1.layers.conv2d(inputs=do_pool1,
                              filters=num_filters,
                              kernel_size=[3, 3],
@@ -67,7 +67,7 @@ def vgg(x, is_training, config, num_filters=32):
     pool2 = tf.compat.v1.layers.max_pooling2d(inputs=bn_conv2, pool_size=[2, 2], strides=[2, 2])
     print('pool2: ' + str(pool2.get_shape))
 
-    do_pool2 = tf.compat.v1.layers.dropout(pool2, rate=0.25, training=is_training, config['seed'])
+    do_pool2 = tf.compat.v1.layers.dropout(pool2, rate=0.25, training=is_training, seed=config['seed'])
     conv3 = tf.compat.v1.layers.conv2d(inputs=do_pool2,
                              filters=num_filters,
                              kernel_size=[3, 3],
@@ -79,7 +79,7 @@ def vgg(x, is_training, config, num_filters=32):
     pool3 = tf.compat.v1.layers.max_pooling2d(inputs=bn_conv3, pool_size=[2, 2], strides=[2, 2])
     print('pool3: ' + str(pool3.get_shape))
 
-    do_pool3 = tf.layers.dropout(pool3, rate=0.25, training=is_training, config['seed'])
+    do_pool3 = tf.layers.dropout(pool3, rate=0.25, training=is_training, seed=config['seed'])
     conv4 = tf.layers.conv2d(inputs=do_pool3,
                              filters=num_filters,
                              kernel_size=[3, 3],
@@ -91,7 +91,7 @@ def vgg(x, is_training, config, num_filters=32):
     pool4 = tf.compat.v1.layers.max_pooling2d(inputs=bn_conv4, pool_size=[2, 2], strides=[2, 2])
     print('pool4: ' + str(pool4.get_shape))
 
-    do_pool4 = tf.compat.v1.layers.dropout(pool4, rate=0.25, training=is_training, config['seed'])
+    do_pool4 = tf.compat.v1.layers.dropout(pool4, rate=0.25, training=is_training, seed=config['seed'])
     conv5 = tf.compat.v1.layers.conv2d(inputs=do_pool4, 
                              filters=num_filters, 
                              kernel_size=[3, 3], 
@@ -104,7 +104,7 @@ def vgg(x, is_training, config, num_filters=32):
     print('pool5: ' + str(pool5.get_shape))
 
     flat_pool5 = tf.contrib.layers.flatten(pool5)
-    do_pool5 = tf.compat.v1.layers.dropout(flat_pool5, rate=0.5, training=is_training, config['seed'])
+    do_pool5 = tf.compat.v1.layers.dropout(flat_pool5, rate=0.5, training=is_training, seed=config['seed'])
     output = tf.compat.v1.layers.dense(inputs=do_pool5,
                             activation=None,
                             units=config['num_classes_dataset'],
