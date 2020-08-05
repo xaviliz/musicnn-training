@@ -111,7 +111,7 @@ if __name__ == '__main__':
     f = open(config_file.DATA_FOLDER + config["index_audio_file"])
     for line in f.readlines():
         id, audio = line.strip().split("\t")
-        audio_repr = audio[:audio.rfind(".")] + ".pk" # .npy or .pk
+        audio_repr = audio[:audio.rfind(".")] + ".npy" # .npy or .pk
         files_to_convert.append((id, config['audio_folder'] + audio,
                                  audio_representation_folder + audio_repr))
 
