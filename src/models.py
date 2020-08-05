@@ -42,58 +42,58 @@ def model_number(x, is_training, config):
 
     elif config['model_number'] == 10:
         print('\nMODEL: BN input > [7, 70%][7, 40%] + temporal > RESIDUAL > GLOBAL POOLING')
-        frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['audio_rep']['n_mels'], num_filt=1.6, type='7774timbraltemporal')
+        frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['audio_rep']['n_mels'], num_filt=1.6, type='7774timbraltemporal', config=config)
         frontend_features = tf.concat(frontend_features_list, 2) # concatnate features coming from the front-end
 
         midend_features_list = midend.dense_cnns(frontend_features, is_training, 64, config)
         midend_features = midend_features_list[3] # residual connections: just pick the last of previous layers
 
-        return backend.temporal_pooling(midend_features, is_training, int(config['num_classes_dataset']), 200, config, type='globalpool')
+        return backend.temporal_pooling(midend_features, is_training, int(config['num_classes_dataset']), 200, type='globalpool', config=config)
         # 508k params | ROC-AUC: 90.61 | PR-AUC: 38.33 | VAL-COST: 0.1304
 
     elif config['model_number'] == 11:
         
         print('\nMODEL: BN input > [7, 70%][7, 40%] + temporal > DENSE > GLOBAL POOLING')
-        frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['audio_rep']['n_mels'], num_filt=1.6, type='7774timbraltemporal', trainable=trainable)
+        frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['audio_rep']['n_mels'], num_filt=1.6, type='7774timbraltemporal', trainable=trainable, config=config)
         frontend_features = tf.concat(frontend_features_list, 2) # concatnate features coming from the front-end
 
         midend_features_list = midend.dense_cnns(frontend_features, is_training, 64, config, trainable=trainable)
         midend_features = tf.concat(midend_features_list, 2)  # dense connection: concatenate features from previous layers
 
-        return backend.temporal_pooling(midend_features, is_training, int(config['num_classes_dataset']), 200, type='globalpool', trainable=trainable)
+        return backend.temporal_pooling(midend_features, is_training, int(config['num_classes_dataset']), 200, type='globalpool', trainable=trainable, config=config)
         # 787k params | ROC-AUC: 90.69 | PR-AUC: 38.44 | VAL-COST: 0.1304
 
     elif config['model_number'] == 12:
         print('\nMODEL: BN input > [7, 40%] > DENSE > ATTENTION + POSITIONAL ENCODING')
-        frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['audio_rep']['n_mels'], num_filt=4.5, type='74timbral')
+        frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['audio_rep']['n_mels'], num_filt=4.5, type='74timbral', config=config)
         frontend_features = tf.concat(frontend_features_list, 2) # concatnate features coming from the front-end
 
         midend_features_list = midend.dense_cnns(frontend_features, is_training, config, 64)
         midend_features = tf.concat(midend_features_list, 2)  # dense connection: concatenate features from previous layers
 
-        return backend.temporal_pooling(midend_features, is_training, int(config['num_classes_dataset']), 200, type='attention_positional')
+        return backend.temporal_pooling(midend_features, is_training, int(config['num_classes_dataset']), 200, type='attention_positional', config=config)
         # 2.4M params | ROC-AUC: 90.77 | PR-AUC: 38.61 | VAL-COST: 0.1304
 
     elif config['model_number'] == 13:
         print('\nMODEL: BN input > [7, 40%] > DENSE > AUTOPOOL')
-        frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['audio_rep']['n_mels'], num_filt=4.5, type='74timbral')
+        frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['audio_rep']['n_mels'], num_filt=4.5, type='74timbral', config=config)
         frontend_features = tf.concat(frontend_features_list, 2) # concatnate features coming from the front-end
 
         midend_features_list = midend.dense_cnns(frontend_features, is_training, config, 64)
         midend_features = tf.concat(midend_features_list, 2)  # dense connection: concatenate features from previous layers
 
-        return backend.temporal_pooling(midend_features, is_training, 50, 200, type='autopool')
+        return backend.temporal_pooling(midend_features, is_training, 50, 200, type='autopool', config=config)
         # 636k params | ROC-AUC: 90.67 | PR-AUC: 38.53 | VAL-COST: 0.1297
 
     elif config['model_number'] == 14:
         print('\nMODEL: BN input > [7, 70%][7, 40%] + temporal > RESIDUAL > RNN')
-        frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['audio_rep']['n_mels'], num_filt=1.6, type='7774timbraltemporal')
+        frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['audio_rep']['n_mels'], num_filt=1.6, type='7774timbraltemporal', config=config)
         frontend_features = tf.concat(frontend_features_list, 2) # concatnate features coming from the front-end
 
         midend_features_list = midend.dense_cnns(frontend_features, is_training, config, 64)
         midend_features = midend_features_list[3] # residual connections: just pick the last of previous layers
 
-        return backend.temporal_pooling(midend_features, is_training, 50, 200, type='rnn')
+        return backend.temporal_pooling(midend_features, is_training, 50, 200, type='rnn', config=config)
         # 3.8M params | ROC-AUC: 90.21 | PR-AUC: 37.17 | VAL-COST: 0.1341
 
     # elif config['model_number'] == 15:
