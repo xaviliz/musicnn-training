@@ -38,7 +38,7 @@ def compute_audio_repr(audio_file, audio_repr_file, force=False):
                                     warping_formula='slaneyMel',
                                     weighting='linear',
                                     normalize='unit_tri',
-                                    bands_type='magnitude',
+                                    bands_type='power',
                                     compression_type='none')
 
     # Compute length
