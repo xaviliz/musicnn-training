@@ -19,9 +19,11 @@ def define_model(x, is_training, config):
         print('coupling layer size: {}'.format(num_classes))
 
     if model_num == 2:
-        model = 'MTT_vgg'
+        model = 'vgg'
     elif model_num == 11:
-        model = 'MTT_musicnn'
+        model = 'musicnn'
+    elif model_num == 12:
+        model = 'musicnn1d'
     elif model_num == 15:
         model = 'MSD_musicnn_disc'
     elif model_num == 20:
@@ -31,20 +33,17 @@ def define_model(x, is_training, config):
     else:
         raise Exception('model number not contemplated for transfer learning')
 
-    if model == 'MTT_musicnn':
+    if model == 'musicnn':
         return build_musicnn(x, is_training, num_classes, config, num_filt_midend=64, num_units_backend=200)
 
-    elif model == 'MTT_vgg':
+    if model == 'musicnn1d':
+        return build_musicnn1d(x, is_training, num_classes, config, num_filt_midend=64, num_units_backend=200)
+
+    elif model == 'vgg':
         return vgg(x, is_training, num_classes, config, 128)
-
-    elif model == 'MSD_musicnn':
-        return build_musicnn(x, is_training, num_classes, config, num_filt_midend=64, num_units_backend=200)
 
     elif model == 'MSD_musicnn_big':
         return build_musicnn(x, is_training, num_classes, config, num_filt_midend=512, num_units_backend=500)
-
-    elif model == 'MSD_vgg':
-        return vgg(x, is_training, num_classes, config, 128)
 
     elif model == 'audioset_vgg':
         return define_vggish_slim(x, is_training, num_classes)
@@ -82,6 +81,32 @@ def build_musicnn(x, is_training, num_classes, config, num_filt_frontend=1.6, nu
     cnn1, cnn2, cnn3 = midend_features_list[1], midend_features_list[2], midend_features_list[3]
     mean_pool = tf.squeeze(mean_pool, [2])
     max_pool = tf.squeeze(max_pool, [2])
+
+    return ld
+
+def build_musicnn1d(x, is_training, num_classes, config, num_filt_frontend=1.6, num_filt_midend=64, num_units_backend=200):
+
+    ### front-end ### musically motivated CNN
+    non_trainable = False
+    frontend_features_list = frontend(x, non_trainable, 96, num_filt=1.6, type='7774timbraltemporal')
+    # concatnate features coming from the front-end
+    frontend_features = tf.concat(frontend_features_list, 2)
+
+    ### mid-end ### dense layers
+    midend_features_list = midend1d(frontend_features, non_trainable, num_filt_midend)
+    # dense connection: concatnate features coming from different layers of the front- and mid-end
+    midend_features = tf.concat(midend_features_list, 2)
+
+    ### back-end ### temporal pooling
+    ld, mean_pool, max_pool = backend(midend_features, is_training, num_classes, num_units_backend, config, type='globalpool_dense')
+
+    # [extract features] temporal and timbral features from the front-end
+    # timbral = tf.concat([frontend_features_list[0], frontend_features_list[1]], 2)
+    # temporal = tf.concat([frontend_features_list[2], frontend_features_list[3], frontend_features_list[4]], 2)
+    # [extract features] mid-end features
+    # cnn1, cnn2, cnn3 = midend_features_list[1], midend_features_list[2], midend_features_list[3]
+    # mean_pool = tf.squeeze(mean_pool, [2])
+    # max_pool = tf.squeeze(max_pool, [2])
 
     return ld
 
@@ -204,12 +229,59 @@ def midend(front_end_output, is_training, num_filt):
     return [front_end_output, bn_conv1_t, res_conv2, res_conv3]
 
 
+def midend1d(front_end_output, is_training, num_filt):
+
+    # front_end_output = tf.expand_dims(front_end_output, 3)
+
+    # conv layer 1 - adapting dimensions
+    front_end_pad = tf.pad(front_end_output, [[0, 0], [3, 3], [0, 0]], "CONSTANT")
+    conv1 = tf.compat.v1.layers.conv1d(inputs=front_end_pad,
+                             filters=num_filt,
+                             kernel_size=7,
+                             padding="valid",
+                             activation=tf.nn.relu,
+                             trainable=False)
+    bn_conv1 = tf.compat.v1.layers.batch_normalization(conv1, training=is_training, trainable=False)
+    # bn_conv1_t = tf.transpose(bn_conv1, [0, 1, 3, 2])
+
+    # conv layer 2 - residual connection
+    bn_conv1_pad = tf.pad(bn_conv1, [[0, 0], [3, 3], [0, 0]], "CONSTANT")
+    conv2 = tf.compat.v1.layers.conv1d(inputs=bn_conv1_pad,
+                             filters=num_filt,
+                             kernel_size=7,
+                             padding="valid",
+                             activation=tf.nn.relu,
+                             trainable=False)
+    bn_conv2 = tf.compat.v1.layers.batch_normalization(conv2, training=is_training, trainable=False)
+    # conv2 = tf.transpose(bn_conv2, [0, 1, 3, 2])
+    res_conv2 = tf.add(conv2, bn_conv1)
+
+    # conv layer 3 - residual connection
+    bn_conv2_pad = tf.pad(res_conv2, [[0, 0], [3, 3], [0, 0]], "CONSTANT")
+    conv3 = tf.compat.v1.layers.conv1d(inputs=bn_conv2_pad,
+                             filters=num_filt,
+                             kernel_size=7,
+                             padding="valid",
+                             activation=tf.nn.relu,
+                             trainable=False)
+    bn_conv3 = tf.compat.v1.layers.batch_normalization(conv3, training=is_training, trainable=False)
+    # conv3 = tf.transpose(bn_conv3, [0, 1, 3, 2])
+    res_conv3 = tf.add(conv3, res_conv2)
+
+    return [front_end_output, bn_conv1, res_conv2, res_conv3]
+
+
 def backend(feature_map, is_training, num_classes, output_units, config, type):
+
+    if config['model_number'] == 11:
+        n_tmp_pool = 2
+    elif config['model_number'] == 12:
+        n_tmp_pool = 1
 
     # temporal pooling
     max_pool = tf.reduce_max(feature_map, axis=1)
     mean_pool, var_pool = tf.nn.moments(feature_map, axes=[1])
-    tmp_pool = tf.concat([max_pool, mean_pool], 2)
+    tmp_pool = tf.concat([max_pool, mean_pool], n_tmp_pool)
 
     # penultimate dense layer
     flat_pool = tf.compat.v1.layers.flatten(tmp_pool)
