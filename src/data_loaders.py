@@ -1,6 +1,6 @@
 import numpy as np
 import pickle
-from numpy import random
+import random
 import shared
 import os
 import json
@@ -33,8 +33,27 @@ def get_degradated_audio_rep(config, data_folder, audio_repr_path):
         raise Exception('eval_mode not avaiable')
     return audio_rep
 
-def get_audio_rep(config, audio_repr_path):
-    audio_rep = np.load(open(audio_repr_path, 'rb'), allow_pickle=True)
+def get_audio_rep(config, audio_repr_path, sampling):
+    floats_num = os.path.getsize(audio_repr_path) // 2  # each float16 has 2 bytes
+    frames_num = floats_num // config['yInput']
+
+    if frames_num < config['xInput']:
+        fp = np.memmap(audio_repr_path, dtype='float16', mode='r', shape=(frames_num, config['yInput']))
+
+        audio_rep = np.zeros([config['xInput'], config['yInput']])
+        audio_rep[:frames_num, :] = np.array(fp)
+        # raise Exception('get_audio_rep: {} contains {} frames, while at least {} are required.'.format(audio_repr_path, frames_num, config['xInput']))
+    else:
+        if sampling == 'random':
+            random_frame_offset = random.randint(0, frames_num - config['xInput'])
+            random_offset = random_frame_offset * config['yInput'] * 2  # idx * bands * bytes per float
+            fp = np.memmap(audio_repr_path, dtype='float16', mode='r', shape=(config['xInput'], config['yInput']), offset=random_offset)
+        elif sampling == 'overlap_sampling':
+            fp = np.memmap(audio_repr_path, dtype='float16', mode='r', shape=(frames_num, config['yInput']))
+
+        audio_rep = np.array(fp)
+    del fp
+
     if config['pre_processing'] == 'logEPS':
         return np.log10(audio_rep + np.finfo(float).eps)
     elif  config['pre_processing'] == 'logC':
@@ -60,9 +79,9 @@ def data_gen_standard(id, relative_audio_repr_path, gt, pack):
 
         # load audio representation -> audio_repr shape: NxM
         if config['task'] == 'labels':
-            audio_rep = get_audio_rep(config, audio_repr_path)
+            audio_rep = get_audio_rep(config, audio_repr_path, sampling)
         elif config['task'] == 'lowlevel_descriptors':
-            audio_rep = get_audio_rep(config, audio_repr_path)
+            audio_rep = get_audio_rep(config, audio_repr_path, sampling)
         elif config['task'] == 'alterations':
             audio_rep = get_degradated_audio_rep(config, data_folder, relative_audio_repr_path)
         else:
@@ -107,7 +126,7 @@ def data_gen_discriminator(id, audio_repr_path, gt, pack):
           raise Exception('discriminator_target not available')
 
         # load audio representation -> audio_repr shape: NxM
-        audio_rep = get_audio_rep(config, audio_repr_path)
+        audio_rep = get_audio_rep(config, audio_repr_path, sampling)
 
         # let's deliver some data!
         last_frame = int(audio_rep.shape[0]) - int(config['xInput']) + 1

@@ -2,7 +2,6 @@ import os
 from joblib import Parallel, delayed
 import json
 import argparse
-import pickle
 import numpy as np
 from pathlib import Path
 import yaml
@@ -27,32 +26,35 @@ def compute_audio_repr(audio_file, audio_repr_file, force=False):
         audio_repr = np.expand_dims(audio_repr, axis=1)
 
     elif config['spectrogram_type'] == 'mel':
-        audio_repr = melspectrogram(audio_file,
-                                    sample_rate=config['resample_sr'],
-                                    frame_size=config['n_fft'],
-                                    hop_size=config['hop'],
-                                    window_type='hann',
-                                    low_frequency_bound=0,
-                                    high_frequency_bound=config['resample_sr'] / 2,
-                                    number_bands=config['n_mels'],
-                                    warping_formula='slaneyMel',
-                                    weighting='linear',
-                                    normalize='unit_tri',
-                                    bands_type='power',
-                                    compression_type='none')
+        try:
+            audio_repr = melspectrogram(audio_file,
+                                        sample_rate=config['resample_sr'],
+                                        frame_size=config['n_fft'],
+                                        hop_size=config['hop'],
+                                        window_type='hann',
+                                        low_frequency_bound=0,
+                                        high_frequency_bound=config['resample_sr'] / 2,
+                                        number_bands=config['n_mels'],
+                                        warping_formula='slaneyMel',
+                                        weighting='linear',
+                                        normalize='unit_tri',
+                                        bands_type='power',
+                                        compression_type='none')
 
-    # Compute length
-    length = audio_repr.shape[0]
+            # Compute length
+            length = audio_repr.shape[0]
 
-    # Transform to float16 (to save storage, and works the same)
-    audio_repr = audio_repr.astype(np.float16)
+            # Transform to float16 (to save storage, and works the same)
+            audio_repr = audio_repr.astype(np.float16)
 
-    # Write results:
-    with open(audio_repr_file, "wb") as f:
-        pickle.dump(audio_repr, f)  # audio_repr shape: NxM
-
-    return length
-
+            # Write results:
+            fp = np.memmap(audio_repr_file, dtype='float16', mode='w+', shape=audio_repr.shape)
+            fp[:] = audio_repr[:]
+            del fp
+            return length
+        except:
+            print('{} failed'.format(audio_file))
+            return 0
 
 def do_process(files, index):
     try:
@@ -78,14 +80,13 @@ def do_process(files, index):
 
 
 def process_files(files):
-
     if DEBUG:
         print('WARNING: Parallelization is not used!')
         for index in tqdm(range(0, len(files))):
             do_process(files, index)
 
     else:
-        Parallel(n_jobs=config['num_processing_units'])(
+        Parallel(n_jobs=config['num_processing_units'], prefer="threads")(
             delayed(do_process)(files, index) for index in range(0, len(files)))
 
 
@@ -111,7 +112,7 @@ if __name__ == '__main__':
     f = open(config_file.DATA_FOLDER + config["index_audio_file"])
     for line in f.readlines():
         id, audio = line.strip().split("\t")
-        audio_repr = audio[:audio.rfind(".")] + ".npy" # .npy or .pk
+        audio_repr = audio[:audio.rfind(".")] + ".dat" # .npy or .pk
         files_to_convert.append((id, config['audio_folder'] + audio,
                                  audio_representation_folder + audio_repr))
 
