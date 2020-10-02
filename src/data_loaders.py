@@ -54,6 +54,10 @@ def get_audio_rep(config, audio_repr_path, sampling):
         audio_rep = np.array(fp)
     del fp
 
+    # do not apply any compression to the embeddings
+    if config['audio_rep']['type'] == 'embeddings':
+        return audio_rep
+
     if config['pre_processing'] == 'logEPS':
         return np.log10(audio_rep + np.finfo(float).eps)
     elif  config['pre_processing'] == 'logC':
