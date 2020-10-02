@@ -10,7 +10,7 @@ def define_model(x, is_training, config):
     model_num = config['model_number']
 
     if model_num == 20 or model_num == 21:
-        num_classes = config['num_classes']
+        num_classes = config['num_classes_dataset']
     else:
         if 'coupling_layer_units' not in config:
             num_classes = 100
@@ -442,6 +442,7 @@ def define_vggish_slim(x, is_training, num_classes):
         net = slim.repeat(net, 2, slim.fully_connected, 4096, scope='fc1')
         # The embedding layer.
         embeddings = slim.fully_connected(net, EMBEDDING_SIZE, scope='fc2')
+        # return tf.identity(embeddings, name='embeddings')
 
     num_units = 100
     fc = slim.fully_connected(embeddings, num_units)
