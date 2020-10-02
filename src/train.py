@@ -53,7 +53,7 @@ def model_and_cost(config, is_train):
         else:
             raise Exception('Training mode "{}" not implemented'.format(config['mode']))
 
-        normalized_y = tf.nn.sigmoid(y)
+        normalized_y = tf.nn.softmax(y)
         print(normalized_y.get_shape())
 
         if 'adversarial' in config['mode']:
@@ -64,7 +64,7 @@ def model_and_cost(config, is_train):
     # tensorflow: define cost function
     with tf.name_scope('metrics'):
         # if you use softmax_cross_entropy be sure that the output of your model has linear units!
-        cost = tf.losses.sigmoid_cross_entropy(y_, y)
+        cost = tf.losses.softmax_cross_entropy(y_, y)
         if config['weight_decay'] != None:
             vars = tf.trainable_variables()
             lossL2 = tf.add_n([ tf.nn.l2_loss(v) for v in vars if 'kernel' or 'weights' in v.name ])
