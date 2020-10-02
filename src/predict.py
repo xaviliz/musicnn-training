@@ -100,9 +100,11 @@ if __name__ == '__main__':
 
     print('Predictions computed, now evaluating..')
 
-    y_pred = shared.average_predictions(pred_array, id_array, ids)
+    y_pred, n_ids = shared.average_predictions_ids(pred_array, id_array, ids)
 
-    predictions = {id: list(pred.astype('float64')) for id, pred in zip(ids, y_pred)}
+    print('len y_pred: ', len(y_pred))
+    print('len n_ids: ', len(n_ids))
+    predictions = {id: list(pred.astype('float64')) for id, pred in zip(n_ids, y_pred)}
 
     with open(predictions_file, 'w') as f:
         json.dump(predictions, f)

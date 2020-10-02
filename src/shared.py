@@ -94,6 +94,33 @@ def average_predictions(pred_array, id_array, ids, id2gt=None):
     else:
         return y_pred
 
+def average_predictions_ids(pred_array, id_array, ids):
+    # averages the predictions and returns the ids of the elements
+    # that did not fail.
+    print('Averaging predictions')
+    y_pred = []
+    ids_present = []
+    for id in ids:
+        try:
+            avg = np.mean(pred_array[np.where(id_array == id)], axis=0)
+            if np.isnan(avg).any():
+                print('{} skipped because it contains nans'.format(id))
+                continue
+
+            if np.isposinf(avg).any():
+                print('{} skipped because it contains pos infs'.format(id))
+                continue
+
+            if np.isneginf(avg).any():
+                print('{} skipped because it contains neg infs'.format(id))
+                continue
+            y_pred.append(avg)
+            ids_present.append(id)
+        except:
+            print(id)
+
+    return y_pred, ids_present
+
 def compute_accuracy(y_true, y_pred):
     print('computing accuracy of {} elements'.format(len(y_true)))
 
