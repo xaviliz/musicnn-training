@@ -16,7 +16,7 @@ config_file = Namespace(**yaml.load(open('config_file.yaml')))
 MODEL_FOLDER = config_file.MODEL_FOLDER
 DATA_FOLDER = config_file.DATA_FOLDER
 DATASET = config_file.DATASET
-N_FOLDS = config_file.config_train['spec']['n_folds']
+N_FOLDS = config_file.config_train['n_folds']
 
 
 def score_predictions(results_file, predictions_file):

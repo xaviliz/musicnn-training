@@ -96,12 +96,10 @@ def model_and_cost(config, is_train):
 if __name__ == '__main__':
     # load config parameters defined in 'config_file.py'
     parser = argparse.ArgumentParser()
-    parser.add_argument('configuration',
-                        help='ID in the config_file dictionary')
     parser.add_argument('-s', '--single_batch', action='store_true', help='iterate over a single batch')
     parser.add_argument('-n', '--number_samples', type=int, help='iterate over a just n random samples')
     args = parser.parse_args()
-    config = config_file.config_train[args.configuration]
+    config = config_file.config_train
     single_batch = args.single_batch
     number_samples = args.number_samples
 
@@ -115,7 +113,7 @@ if __name__ == '__main__':
 
     # audioset features are already compressed
     if config['model_number'] == 20:
-        print('updating configuration for audioset model')
+        print('overwritting spectrogram configuration for the vggish-audioset model')
 
         config['pre_processing'] = ''
         config['n_frames'] = 96
@@ -125,9 +123,13 @@ if __name__ == '__main__':
     if config['audio_rep']['type'] == 'waveform':
         raise ValueError('Waveform-based training is not implemented')
 
-    elif config['audio_rep']['spectrogram_type'] == 'mel':
+    elif 'melspectrogram' in config['audio_rep']['type']:
         config['xInput'] = config['n_frames']
         config['yInput'] = config['audio_rep']['n_mels']
+
+    elif config['audio_rep']['type'] == 'embeddings':
+        config['xInput'] = 1
+        config['yInput'] = config['audio_rep']['n_embeddings']
 
     # get the data loader
     if 'adversarial' in config['mode']:
@@ -167,7 +169,7 @@ if __name__ == '__main__':
     print('# Classes:', config['classes_vector'])
 
     # save experimental settings
-    experiment_id = str(shared.get_epoch_time()) + args.configuration
+    experiment_id = str(shared.get_epoch_time()) + config['audio_rep']['type']
     model_folder = config_file.MODEL_FOLDER + 'experiments/' + str(experiment_id) + '/'
     if not os.path.exists(model_folder):
         os.makedirs(model_folder)

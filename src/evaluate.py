@@ -16,9 +16,9 @@ TEST_BATCH_SIZE = 64
 MODEL_FOLDER = config_file.MODEL_FOLDER
 DATA_FOLDER = config_file.DATA_FOLDER
 FILE_INDEX = DATA_FOLDER + 'index_repr.tsv'
-FILE_GROUND_TRUTH_TEST = config_file.config_train['spec']['gt_test']
-FOLD = config_file.config_train['spec']['fold']
-NUM_CLASSES_DATASET = config_file.config_train['spec']['num_classes_dataset']
+FILE_GROUND_TRUTH_TEST = config_file.config_train['gt_test']
+FOLD = config_file.config_train['fold']
+NUM_CLASSES_DATASET = config_file.config_train['num_classes_dataset']
 
 
 def get_lowlevel_descriptors_groundtruth(config, id2audio_repr_path, orig_ids):
