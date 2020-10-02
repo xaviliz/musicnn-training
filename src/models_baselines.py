@@ -1,5 +1,16 @@
 import tensorflow as tf
 
+
+def perceptron(x, is_training, config):
+    x = tf.compat.v1.squeeze(x, axis=[1])
+    # x = tf.compat.v1.layers.dropout(x, rate=0.5, training=is_training)
+    # x = tf.compat.v1.layers.batch_normalization(x, training=is_training)
+    return tf.compat.v1.layers.dense(inputs=x,
+                                     activation=tf.nn.relu,
+                                     units=config['coupling_layer_units'],
+                                     kernel_initializer=tf.contrib.layers.variance_scaling_initializer(seed=config['seed']))
+
+
 def dieleman(x, is_training, config):
     print('Input: ' + str(x.get_shape))
     input_layer = tf.expand_dims(x, 3)
@@ -7,7 +18,7 @@ def dieleman(x, is_training, config):
 
     conv1 = tf.compat.v1.layers.conv2d(inputs=bn_input, 
     	                     filters=32, 
-    	                     kernel_size=[8, config['yInput']], 
+    	                     kernel_size=[8, config['yInput']],
     	                     padding="valid", 
     	                     activation=tf.nn.relu, 
     	                     name='1cnnOut', 
@@ -33,7 +44,7 @@ def dieleman(x, is_training, config):
                             kernel_initializer=tf.contrib.layers.variance_scaling_initializer(seed=config['seed']))
     output = tf.compat.v1.layers.dense(inputs=dense, 
     	                   activation=None, 
-    	                   units=config['num_classes_dataset'], 
+    	                   units=config['num_classes_dataset'],
     	                   kernel_initializer=tf.contrib.layers.variance_scaling_initializer(seed=config['seed']))
     print('output: ' + str(output.get_shape))
     return output 

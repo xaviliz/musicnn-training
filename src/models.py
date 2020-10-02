@@ -17,9 +17,8 @@ def model_number(x, is_training, config):
     #     dieleman < vgg32 < timbre < vgg128      #
 
     if config['model_number'] == 0:
-        print('\nMODEL: Dieleman | BN input')
-        return models_baselines.dieleman(x, is_training, config)
-        # 66k params | ROC-AUC: 88.61 | PR-AUC: 34.13 | VAL-COST: 0.1390
+        print('\nMODEL: Perceptron | (Intended for transfer learning)')
+        return models_baselines.perceptron(x, is_training, config)
 
     elif config['model_number'] == 1:
         print('\nMODEL: VGG 32 | BN input')
