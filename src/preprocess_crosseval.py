@@ -8,11 +8,18 @@ import yaml
 from argparse import Namespace
 from tqdm import tqdm
 
+from feature_melspectrogram_essentia import feature_melspectrogram_essentia
+from feature_melspectrogram_vggish import feature_melspectrogram_vggish
+from feature_ol3 import feature_ol3
+from feature_spleeter import feature_spleeter
+from feature_tempocnn import feature_tempocnn
+
+
 config_file = Namespace(**yaml.load(open('config_file.yaml'),
                                     Loader=yaml.SafeLoader))
-config = config_file.config_preprocess['mtgdb_spec']
+config = config_file.config_preprocess
 
-DEBUG = False
+DEBUG = True
 
 
 def compute_audio_repr(audio_file, audio_repr_file, lib, force=False):
@@ -26,41 +33,15 @@ def compute_audio_repr(audio_file, audio_repr_file, lib, force=False):
         os.makedirs(base_dir)
 
     if lib == 'essentia':
-        from essentia.pytools.extractors.melspectrogram import melspectrogram
-        audio_repr = melspectrogram(audio_file,
-                                    sample_rate=config['resample_sr'],
-                                    frame_size=config['n_fft'],
-                                    hop_size=config['hop'],
-                                    window_type='hann',
-                                    low_frequency_bound=0,
-                                    high_frequency_bound=config['resample_sr'] / 2,
-                                    number_bands=config['n_mels'],
-                                    warping_formula='slaneyMel',
-                                    weighting='linear',
-                                    normalize='unit_tri',
-                                    bands_type='magnitude',
-                                    compression_type='none')
-
-    elif lib == 'librosa':
-        import librosa
-        audio, sr = librosa.load(audio_file, sr=config['resample_sr'])
-        audio_repr = librosa.feature.melspectrogram(y=audio, sr=sr,
-                                                    hop_length=config['hop'],
-                                                    n_fft=config['n_fft'],
-                                                    n_mels=config['n_mels']).T
-    elif lib == 'audioset':
-        import librosa
-        import audiosetmel
-
-        audio, sr = librosa.load(audio_file, sr=config['resample_sr'])
-        audio_repr = audiosetmel.log_mel_spectrogram(audio,
-                                                  audio_sample_rate=16000,
-                                                  log_offset=0.01,
-                                                  window_length_secs=0.025,
-                                                  hop_length_secs=0.010,
-                                                  num_mel_bins=64,
-                                                  lower_edge_hertz=125,
-                                                  upper_edge_hertz=7500)
+        audio_repr = feature_melspectrogram_essentia(audio_file)
+    elif lib == 'vggish':
+        audio_repr = feature_melspectrogram_vggish(audio_file)
+    elif lib == 'ol3':
+        audio_repr = feature_ol3(audio_file)
+    elif lib == 'spleeter':
+        audio_repr = feature_spleeter(audio_file)
+    elif lib == 'tempocnn':
+        audio_repr = feature_tempocnn(audio_file)
     else:
         raise Exception('no signal processing lib defined!')
 
@@ -72,8 +53,9 @@ def compute_audio_repr(audio_file, audio_repr_file, lib, force=False):
     audio_repr = audio_repr.astype(np.float16)
 
     # Write results:
-    with open(audio_repr_file, "wb") as f:
-        pickle.dump(audio_repr, f)  # audio_repr shape: NxM
+    fp = np.memmap(audio_repr_file, dtype='float16', mode='w+', shape=audio_repr.shape)
+    fp[:] = audio_repr[:]
+    del fp
 
     return length
 
@@ -87,7 +69,7 @@ def do_process(files, index, lib):
         # compute audio representation (pre-processing)
         length = compute_audio_repr(audio_file, audio_repr_file, lib)
         # index.tsv writing
-        fw = open(os.path.join(data_dir, "index.tsv"), "a")
+        fw = open(os.path.join(metadata_dir, 'index.tsv'), 'a')
         fw.write("%s\t%s\n" % (id, audio_repr_file))
         fw.close()
         print(str(index) + '/' + str(len(files)) + ' Computed: %s' % audio_file)
@@ -111,38 +93,40 @@ def process_files(files, lib):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('index_file', help='index file')
-    parser.add_argument('index_basedir', help='grountruth file')
+    parser.add_argument('audio_dir', help='grountruth file')
     parser.add_argument('data_dir', help='grountruth file')
-    parser.add_argument('lib', help='dsp lib', choices=['essentia', 'librosa', 'audioset'])
+    parser.add_argument('lib', help='dsp lib', choices=['essentia', 'librosa', 'vggish', 'ol3', 'spleeter', 'tempocnn'])
 
     args = parser.parse_args()
 
     index_file = args.index_file
-    index_basedir = args.index_basedir
+    audio_dir = args.audio_dir
     data_dir = args.data_dir
     lib = args.lib
 
-    fw = open(os.path.join(data_dir, "index.tsv"), "w")
-    fw.write('')
-    fw.close()
 
     # set audio representations folder
-    if not os.path.exists(data_dir):
-        os.makedirs(data_dir)
+    metadata_dir = os.path.join(data_dir, 'metadata')
+    if not os.path.exists(metadata_dir):
+        os.makedirs(metadata_dir, exist_ok=True)
     else:
         print("WARNING: already exists a folder with this name!"
               "\nThis is expected if you are splitting computations into different machines.."
               "\n..because all these machines are writing to this folder. Otherwise, check your config_file!")
 
+    fw = open(os.path.join(metadata_dir, 'index.tsv'), "w")
+    fw.write('')
+    fw.close()
+
     # list audios to process: according to 'index_file'
     files_to_convert = []
     f = open(index_file)
     for line in f.readlines():
-        id, path = line.strip().split("\t")
-        audio_repr = path[:path.rfind(".")] + ".pk"  # .npy or .pk
-        audio_repr = audio_repr.replace(index_basedir, '')
-        audio_repr = os.path.join(data_dir, audio_repr)
+        id, audio_path = line.strip().split("\t")
+        audio_repr = audio_path[:audio_path.rfind(".")] + ".dat"
+        tgt = os.path.join(data_dir, audio_repr)
+        src = os.path.join(audio_dir, audio_path)
 
-        files_to_convert.append((id, path, audio_repr))
+        files_to_convert.append((id, src, tgt))
 
     process_files(files_to_convert, lib)

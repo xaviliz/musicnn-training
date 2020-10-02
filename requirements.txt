@@ -35,3 +35,4 @@ Werkzeug==0.15.5
 wrapt==1.11.2
 pyyaml
 essentia  # TODO: Fix Essentia version once we havea a wheel with the required pytools
+scikit-image

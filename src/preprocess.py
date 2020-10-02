@@ -6,8 +6,13 @@ import numpy as np
 from pathlib import Path
 import yaml
 from argparse import Namespace
-from essentia.pytools.extractors.melspectrogram import melspectrogram
 from tqdm import tqdm
+
+from feature_melspectrogram_essentia import feature_melspectrogram_essentia
+from feature_melspectrogram_vggish import feature_melspectrogram_vggish
+from feature_ol3 import feature_ol3
+from feature_spleeter import feature_spleeter
+from feature_tempocnn import feature_tempocnn
 
 config_file = Namespace(**yaml.load(open('config_file.yaml'), Loader=yaml.SafeLoader))
 
@@ -25,36 +30,30 @@ def compute_audio_repr(audio_file, audio_repr_file, force=False):
         audio_repr = audio
         audio_repr = np.expand_dims(audio_repr, axis=1)
 
-    elif config['spectrogram_type'] == 'mel':
-        try:
-            audio_repr = melspectrogram(audio_file,
-                                        sample_rate=config['resample_sr'],
-                                        frame_size=config['n_fft'],
-                                        hop_size=config['hop'],
-                                        window_type='hann',
-                                        low_frequency_bound=0,
-                                        high_frequency_bound=config['resample_sr'] / 2,
-                                        number_bands=config['n_mels'],
-                                        warping_formula='slaneyMel',
-                                        weighting='linear',
-                                        normalize='unit_tri',
-                                        bands_type='power',
-                                        compression_type='none')
+    elif config['feature_name'] == 'melspectrogram':
+        audio_repr = feature_melspectrogram_essentia(audio_file)
+    elif config['feature_name'] == 'vggish':
+        audio_repr = feature_melspectrogram_vggish(audio_file)
+    elif config['feature_name'] == 'ol3':
+        audio_repr = feature_ol3(audio_file)
+    elif config['feature_name'] == 'spleeter':
+        audio_repr = feature_spleeter(audio_file)
+    elif config['feature_name'] == 'tempocnn':
+        audio_repr = feature_tempocnn(audio_file)
+    else:
+        raise Exception('Feature {} not implemented.'.format(config['type']))
 
-            # Compute length
-            length = audio_repr.shape[0]
+    # Compute length
+    length = audio_repr.shape[0]
 
-            # Transform to float16 (to save storage, and works the same)
-            audio_repr = audio_repr.astype(np.float16)
+    # Transform to float16 (to save storage, and works the same)
+    audio_repr = audio_repr.astype(np.float16)
 
-            # Write results:
-            fp = np.memmap(audio_repr_file, dtype='float16', mode='w+', shape=audio_repr.shape)
-            fp[:] = audio_repr[:]
-            del fp
-            return length
-        except:
-            print('{} failed'.format(audio_file))
-            return 0
+    # Write results:
+    fp = np.memmap(audio_repr_file, dtype='float16', mode='w+', shape=audio_repr.shape)
+    fp[:] = audio_repr[:]
+    del fp
+    return length
 
 def do_process(files, index):
     try:
@@ -93,11 +92,14 @@ def process_files(files):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('configurationID', help='ID of the configuration dictionary')
+    parser.add_argument('feature_name', help='the feature type')
     args = parser.parse_args()
-    config = config_file.config_preprocess[args.configurationID]
+    config = config_file.config_preprocess
+    feature_name = args.feature_name
+    config.update(config_file.config_preprocess[feature_name])
+    config['feature_name'] = feature_name
 
-    audio_representation_folder = config_file.config_train['spec']['audio_representation_folder']
+    audio_representation_folder = config_file.config_train['audio_representation_folder']
 
     # set audio representations folder
     if not os.path.exists(audio_representation_folder):
