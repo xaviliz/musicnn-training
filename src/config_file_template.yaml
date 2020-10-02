@@ -22,7 +22,7 @@ config_preprocess:
     n_fft: 512
     n_mels: 64
     resample_sr: 16000
-    type: vggish_melspectrogram
+    type: melspectrogram
   ol3:
     hop: 12000
     n_fft: 2048
@@ -30,7 +30,7 @@ config_preprocess:
     resample_sr: 48000
     n_embeddings: 512
     type: embeddings
-  tempo-cnn:
+  tempocnn:
     resample_sr: 11025
     n_embeddings: 256
     type: embeddings
