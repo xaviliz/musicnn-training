@@ -1,4 +1,4 @@
-from essentia.standard import MonoLoader, TensorflowPredict
+from essentia.standard import AudioLoader, Resample, TensorflowPredict
 from essentia import Pool
 import numpy as np
 from skimage.measure import block_reduce
@@ -10,9 +10,13 @@ EPS = np.finfo('float32').eps
 
 
 def feature_spleeter(audio_file):
-    audio = MonoLoader(filename=audio_file, sampleRate=SR)()
+    stereo, sr, _, _, _, _ = AudioLoader(filename=audio_file)()
 
-    stereo = np.vstack([audio, audio]).reshape([-1, 2, 1, 1])
+    if sr != SR:
+        stereo = np.vstack([Resample(inputSampleRate=sr, outputSampleRate=SR)(stereo[:, 0]),
+                            Resample(inputSampleRate=sr, outputSampleRate=SR)(stereo[:, 1])]).T
+
+    stereo = stereo.reshape([-1, 2, 1, 1])
 
     pool = Pool()
     pool.set(I_NODE, stereo)
