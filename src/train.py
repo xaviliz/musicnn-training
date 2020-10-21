@@ -42,27 +42,51 @@ def tf_define_model_and_cost(config):
 
 
 def data_gen(id, audio_repr_path, gt, pack):
+    try:
+        [config, sampling, param_sampling, augmentation] = pack
 
-    [config, sampling, param_sampling, augmentation] = pack
+        # load audio representation -> audio_repr shape: NxM
+        filename = config_file.DATA_FOLDER + audio_repr_path
+        if not os.path.exists(filename):
+            # with open('notfound', 'a') as f:
+            #     f.write('{}\n'.format(id))
+            return
 
-    # load audio representation -> audio_repr shape: NxM
-    audio_rep = pickle.load(open(config_file.DATA_FOLDER + audio_repr_path, 'rb'))
-    if config['pre_processing'] == 'logEPS':
-        audio_rep = np.log10(audio_rep + np.finfo(float).eps)
-    elif  config['pre_processing'] == 'logC':
-        audio_rep = np.log10(10000 * audio_rep + 1)
+        floats_num = os.path.getsize(filename) // 2  # each flaot16 has 2 bytes
+        frames_num = floats_num // config['yInput']
+        assert floats_num % config['yInput'] == 0
 
-    # let's deliver some data!
-    last_frame = int(audio_rep.shape[0]) - int(config['xInput']) + 1
-    if sampling == 'random':
-        for i in range(0, param_sampling):
-            time_stamp = random.randint(0,last_frame-1)
-            yield dict(X = audio_rep[time_stamp : time_stamp+config['xInput'], : ], Y = gt, ID = id)
+        if frames_num < config['xInput']:
+            # with open('tooshort', 'a') as f:
+            #     f.write('{}\n'.format(id))
+            return
 
-    elif sampling == 'overlap_sampling':
-        for time_stamp in range(0, last_frame, param_sampling):
-            yield dict(X = audio_rep[time_stamp : time_stamp+config['xInput'], : ], Y = gt, ID = id)
+        if sampling == 'random':
+            random_frame_offset = random.randint(0, frames_num - config['xInput'])
+            random_offset = random_frame_offset * config['yInput'] * 2  # idx * bands * bytes per float
+            fp = np.memmap(filename, dtype='float16', mode='r', shape=(config['xInput'], config['yInput']), offset=random_offset)
+        elif sampling == 'overlap_sampling':
+            fp = np.memmap(filename, dtype='float16', mode='r', shape=(frames_num, config['yInput']))
+        audio_rep = np.array(fp)
+        del fp
 
+        if config['pre_processing'] == 'logEPS':
+            audio_rep = np.log10(audio_rep + np.finfo(float).eps)
+        elif  config['pre_processing'] == 'logC':
+            audio_rep = np.log10(10000 * audio_rep + 1)
+
+        # let's deliver some data!
+        if sampling == 'random':
+            for i in range(0, param_sampling):
+                yield dict(X = audio_rep, Y = gt, ID = id)
+
+        elif sampling == 'overlap_sampling':
+            last_frame = int(audio_rep.shape[0]) - int(config['xInput']) + 1
+            for time_stamp in range(0, last_frame, param_sampling):
+                yield dict(X = audio_rep[time_stamp : time_stamp+config['xInput'], : ], Y = gt, ID = id)
+    except:
+        with open('failed', 'a') as f:
+            f.write('id: {} failed\n'.format(id))
 
 if __name__ == '__main__':
 
@@ -72,6 +96,11 @@ if __name__ == '__main__':
                         help='ID in the config_file dictionary')
     args = parser.parse_args()
     config = config_file.config_train[args.configuration]
+
+    # Debug logs
+    # open('failed', 'w').close()
+    # open('notfound', 'w').close()
+    # open('tooshort', 'w').close()
 
     # load config parameters used in 'preprocess_librosa.py',
     config_json = config_file.DATA_FOLDER + config['audio_representation_folder'] + 'config.json'
