@@ -59,7 +59,7 @@ config_train = {
         'patience': 75,                           # divide by two the learning rate after the number of 'patience' epochs (integer)
 
         # experiment settings?
-        'num_classes_dataset': 50,
+        'num_classes_dataset': 200,
         'val_batch_size': 32
     }
 }

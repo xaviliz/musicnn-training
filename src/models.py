@@ -44,7 +44,7 @@ def model_number(x, is_training, config):
         midend_features_list = midend.dense_cnns(frontend_features, is_training, 64)
         midend_features = midend_features_list[3] # residual connections: just pick the last of previous layers
 
-        return backend.temporal_pooling(midend_features, is_training, 50, 200, type='globalpool')
+        return backend.temporal_pooling(midend_features, is_training, config['num_classes_dataset'], 200, type='globalpool')
         # 508k params | ROC-AUC: 90.61 | PR-AUC: 38.33 | VAL-COST: 0.1304
 
     elif config['model_number'] == 11:
@@ -55,7 +55,7 @@ def model_number(x, is_training, config):
         midend_features_list = midend.dense_cnns(frontend_features, is_training, 64)
         midend_features = tf.concat(midend_features_list, 2)  # dense connection: concatenate features from previous layers
 
-        return backend.temporal_pooling(midend_features, is_training, 50, 200, type='globalpool')
+        return backend.temporal_pooling(midend_features, is_training, config['num_classes_dataset'], 200, type='globalpool')
         # 787k params | ROC-AUC: 90.69 | PR-AUC: 38.44 | VAL-COST: 0.1304
 
     elif config['model_number'] == 12:
@@ -66,7 +66,7 @@ def model_number(x, is_training, config):
         midend_features_list = midend.dense_cnns(frontend_features, is_training, 64)
         midend_features = tf.concat(midend_features_list, 2)  # dense connection: concatenate features from previous layers
 
-        return backend.temporal_pooling(midend_features, is_training, 50, 200, type='attention_positional')
+        return backend.temporal_pooling(midend_features, is_training, config['num_classes_dataset'], 200, type='attention_positional')
         # 2.4M params | ROC-AUC: 90.77 | PR-AUC: 38.61 | VAL-COST: 0.1304
 
     elif config['model_number'] == 13:
@@ -77,7 +77,7 @@ def model_number(x, is_training, config):
         midend_features_list = midend.dense_cnns(frontend_features, is_training, 64)
         midend_features = tf.concat(midend_features_list, 2)  # dense connection: concatenate features from previous layers
 
-        return backend.temporal_pooling(midend_features, is_training, 50, 200, type='autopool')
+        return backend.temporal_pooling(midend_features, is_training, config['num_classes_dataset'], 200, type='autopool')
         # 636k params | ROC-AUC: 90.67 | PR-AUC: 38.53 | VAL-COST: 0.1297
 
     elif config['model_number'] == 14:
@@ -88,7 +88,7 @@ def model_number(x, is_training, config):
         midend_features_list = midend.dense_cnns(frontend_features, is_training, 64)
         midend_features = midend_features_list[3] # residual connections: just pick the last of previous layers
 
-        return backend.temporal_pooling(midend_features, is_training, 50, 200, type='rnn')
+        return backend.temporal_pooling(midend_features, is_training, config['num_classes_dataset'], 200, type='rnn')
         # 3.8M params | ROC-AUC: 90.21 | PR-AUC: 37.17 | VAL-COST: 0.1341
 
     raise RuntimeError("ERROR: Model {} can't be found!".format(config["model_number"]))
