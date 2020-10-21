@@ -1,4 +1,5 @@
 import numpy as np
+import os
 from datetime import datetime
 from sklearn import metrics
 import warnings
@@ -25,13 +26,13 @@ def load_id2gt(gt_file):
     return ids, id2gt
 
 
-def load_id2path(index_file):
+def load_id2path(index_file, data_folder='data'):
     paths = []
     fspec = open(index_file)
     id2path = dict()
     for line in fspec.readlines():
-        id, path, _ = line.strip().split("\t")
-        id2path[id] = path
+        id, path = line.strip().split("\t")
+        id2path[id] = os.path.join(data_folder, path)
         paths.append(path)
     return paths, id2path
 
