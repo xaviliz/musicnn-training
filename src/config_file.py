@@ -43,7 +43,7 @@ config_train = {
 
         # input setup?
         'n_frames': 187,                          # length of the input (integer)
-        'pre_processing': 'logC',                 # 'logEPS', 'logC' or None
+        'pre_processing': None,                   # 'logEPS', 'logC' or None
         'pad_short': 'repeat-pad',                # 'zero-pad' or 'repeat-pad'
         'train_sampling': 'random',               # 'overlap_sampling' or 'random'. How to sample patches from the audio?
         'param_train_sampling': 1,                # if mode_sampling='overlap_sampling': param_sampling=hop_size
