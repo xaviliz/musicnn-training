@@ -124,6 +124,12 @@ if __name__ == '__main__':
     file_ground_truth_train = config_file.DATA_FOLDER + config['gt_train']
     [ids_train, id2gt_train] = shared.load_id2gt(file_ground_truth_train)
 
+    # apaño
+    n_ids_before = len(ids_train)
+    ids_idx = set(id2audio_repr_path.keys())
+    ids_train = list(ids_idx.intersection(set(ids_train)))
+    print('number of removed ids: ', n_ids_before - len(ids_train))
+
     # load validation data
     file_ground_truth_val = config_file.DATA_FOLDER + config['gt_val']
     [ids_val, id2gt_val] = shared.load_id2gt(file_ground_truth_val)
