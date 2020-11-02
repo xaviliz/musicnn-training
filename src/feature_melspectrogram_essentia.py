@@ -1,4 +1,4 @@
-from essentia.pytools.extractors import melspectrogram
+from essentia.pytools.extractors.melspectrogram import melspectrogram
 
 SR = 16000
 N_MELS = 96
