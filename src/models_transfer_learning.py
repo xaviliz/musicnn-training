@@ -1,4 +1,5 @@
 import tensorflow as tf
+tf.disable_v2_behavior()
 from flip_gradient import flip_gradient
 # from musicnn import configuration as config
 
@@ -298,10 +299,11 @@ def backend(feature_map, is_training, num_classes, output_units, config, type):
     if not num_classes:
         return dense_dropout, mean_pool, max_pool
     else:
+        initializer = tf.keras.initializers.VarianceScaling(scale=2.0, seed=config['seed'])
         ld = tf.compat.v1.layers.dense(inputs=dense_dropout,
                                activation=tf.nn.relu,
                                units=num_classes,
-                               kernel_initializer=tf.contrib.layers.variance_scaling_initializer(seed=config['seed']))
+                               kernel_initializer=initializer)
 
         return ld, mean_pool, max_pool
 
@@ -369,14 +371,15 @@ def vgg(x, is_training, num_classes, config, num_filters=32):
 
     flat_pool5 = tf.compat.v1.layers.flatten(pool5)
     do_pool5 = tf.compat.v1.layers.dropout(flat_pool5, rate=0.5, training=non_trainable)
-    
+
     if not num_classes:
         return do_pool5
     else:
+        initializer = tf.keras.initializers.VarianceScaling(scale=2.0, seed=config['seed'])
         return tf.compat.v1.layers.dense(inputs=do_pool5,
                                 activation=tf.nn.relu,
                                 units=num_classes,
-                                kernel_initializer=tf.contrib.layers.variance_scaling_initializer(seed=config['seed']))
+                                kernel_initializer=initializer)
 
 
 def define_vggish_slim(x, is_training, num_classes):
