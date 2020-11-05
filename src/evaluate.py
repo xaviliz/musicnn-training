@@ -3,7 +3,8 @@ import json
 import pescador
 import shared, train
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 from tqdm import tqdm
 import yaml
 from argparse import Namespace
