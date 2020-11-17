@@ -1,6 +1,9 @@
 import tensorflow as tf
 tf.disable_v2_behavior()
+
+import tf_slim as slim
 from flip_gradient import flip_gradient
+
 # from musicnn import configuration as config
 
 # disabling deprecation warnings (caused by change from tensorflow 1.x to 2.x)
@@ -308,7 +311,6 @@ def backend(feature_map, is_training, num_classes, output_units, config, type):
         return ld, mean_pool, max_pool
 
 
-
 def vgg(x, is_training, num_classes, config, num_filters=32):
     non_trainable = False
 
@@ -382,25 +384,31 @@ def vgg(x, is_training, num_classes, config, num_filters=32):
                                 kernel_initializer=initializer)
 
 
-def define_vggish_slim(x, is_training, num_classes):
+def define_vggish_slim(features_tensor, is_training, num_classes):
     """Defines the VGGish TensorFlow model.
     All ops are created in the current default graph, under the scope 'vggish/'.
-    The input is a placeholder named 'vggish/input_features' of type float32 and
-    shape [batch_size, num_frames, num_bands] where batch_size is variable and
-    num_frames and num_bands are constants, and [num_frames, num_bands] represents
-    a log-mel-scale spectrogram patch covering num_bands frequency bands and
-    num_frames time frames (where each frame step is usually 10ms). This is
-    produced by computing the stabilized log(mel-spectrogram + params.LOG_OFFSET).
-    The output is an op named 'vggish/embedding' which produces the activations of
-    a 128-D embedding layer, which is usually the penultimate layer when used as
-    part of a full model with a final classifier layer.
+    The input is either a tensor passed in via the optional 'features_tensor'
+    argument or a placeholder created below named 'vggish/input_features'. The
+    input is expected to have dtype float32 and shape [batch_size, num_frames,
+    num_bands] where batch_size is variable and num_frames and num_bands are
+    constants, and [num_frames, num_bands] represents a log-mel-scale spectrogram
+    patch covering num_bands frequency bands and num_frames time frames (where
+    each frame step is usually 10ms). This is produced by computing the stabilized
+    log(mel-spectrogram + params.LOG_OFFSET).  The output is a tensor named
+    'vggish/embedding' which produces the pre-activation values of a 128-D
+    embedding layer, which is usually the penultimate layer when used as part of a
+    full model with a final classifier layer.
     Args:
-    training: If true, all parameters are marked trainable.
+      features_tensor: If not None, the tensor containing the input features.
+        If None, a placeholder input is created.
+      training: If true, all parameters are marked trainable.
     Returns:
-    The op 'vggish/embeddings'.
-    """
+      The op 'vggish/embeddings'.
 
-    slim = tf.contrib.slim
+    Note:
+        This implementation follows the original tensorflow model defined at:
+        https://github.com/tensorflow/models/blob/master/research/audioset/vggish/vggish_slim.py
+    """
 
     # Architectural constants.
     EMBEDDING_SIZE = 128  # Size of embedding layer.
@@ -415,55 +423,56 @@ def define_vggish_slim(x, is_training, num_classes):
     # - All convolutions are 3x3 with stride 1 and SAME padding.
     # - All max-pools are 2x2 with stride 2 and SAME padding.
 
-    with slim.arg_scope([slim.conv2d, slim.fully_connected],
-                        weights_initializer=tf.truncated_normal_initializer(
-                            stddev=INIT_STDDEV),
-                        biases_initializer=tf.zeros_initializer(),
-                        activation_fn=tf.nn.relu,
-                        trainable=False), \
-        slim.arg_scope([slim.conv2d],
-                        kernel_size=[3, 3], stride=1, padding='SAME'), \
-        slim.arg_scope([slim.max_pool2d],
-                        kernel_size=[2, 2], stride=2, padding='SAME'), \
-        tf.variable_scope('vggish'):
-
+    with slim.arg_scope(
+        [slim.conv2d, slim.fully_connected],
+        weights_initializer=tf.truncated_normal_initializer(stddev=INIT_STDDEV),
+        biases_initializer=tf.zeros_initializer(),
+        activation_fn=tf.nn.relu,
+        trainable=False,
+    ), slim.arg_scope([slim.conv2d], kernel_size=[3, 3], stride=1, padding="SAME"), slim.arg_scope(
+        [slim.max_pool2d], kernel_size=[2, 2], stride=2, padding="SAME"
+    ), tf.variable_scope(
+        "vggish"
+    ):
+        # Input: a batch of 2-D log-mel-spectrogram patches.
+        if features_tensor is None:
+            features_tensor = tf.placeholder(tf.float32, shape=(None, NUM_FRAMES, NUM_BANDS), name="input_features")
         # Reshape to 4-D so that we can convolve a batch with conv2d().
-        net = tf.reshape(x, [-1, NUM_FRAMES, NUM_BANDS, 1])
+        net = tf.reshape(features_tensor, [-1, NUM_FRAMES, NUM_BANDS, 1])
 
         # The VGG stack of alternating convolutions and max-pools.
-        net = slim.conv2d(net, 64, scope='conv1')
-        net = slim.max_pool2d(net, scope='pool1')
-        net = slim.conv2d(net, 128, scope='conv2')
-        net = slim.max_pool2d(net, scope='pool2')
-        net = slim.repeat(net, 2, slim.conv2d, 256, scope='conv3')
-        net = slim.max_pool2d(net, scope='pool3')
-        net = slim.repeat(net, 2, slim.conv2d, 512, scope='conv4')
-        net = slim.max_pool2d(net, scope='pool4')
+        net = slim.conv2d(net, 64, scope="conv1")
+        net = slim.max_pool2d(net, scope="pool1")
+        net = slim.conv2d(net, 128, scope="conv2")
+        net = slim.max_pool2d(net, scope="pool2")
+        net = slim.repeat(net, 2, slim.conv2d, 256, scope="conv3")
+        net = slim.max_pool2d(net, scope="pool3")
+        net = slim.repeat(net, 2, slim.conv2d, 512, scope="conv4")
+        net = slim.max_pool2d(net, scope="pool4")
 
         # Flatten before entering fully-connected layers
         net = slim.flatten(net)
-        net = slim.repeat(net, 2, slim.fully_connected, 4096, scope='fc1')
+        net = slim.repeat(net, 2, slim.fully_connected, 4096, scope="fc1")
         # The embedding layer.
-        embeddings = slim.fully_connected(net, EMBEDDING_SIZE, scope='fc2')
+        embeddings = slim.fully_connected(net, EMBEDDING_SIZE, scope="fc2", activation_fn=None)
         # return tf.identity(embeddings, name='embeddings')
-
-    num_units = 100
-    fc = slim.fully_connected(embeddings, num_units)
 
     # Add a classifier layer at the end, consisting of parallel logistic
     # classifiers, one per class. This allows for multi-class tasks.
-    logits = slim.fully_connected(
-        fc, num_classes, activation_fn=None, scope='logits')
-    tf.sigmoid(logits, name='prediction')
+    num_units = 100
+    fc = slim.fully_connected(tf.nn.relu(embeddings), num_units)
 
-    return tf.identity(logits, name='logits')
+    logits = slim.fully_connected(fc, num_classes, activation_fn=None, scope="logits")
+    tf.sigmoid(logits, name="prediction")
+
+    return tf.identity(logits, name="logits")
 
 
-def define_small_vggish_slim(x, is_training, num_classes):
+def define_small_vggish_slim(features_tensor, is_training, num_classes):
     """Defines a small VGGish TensorFlow model.
     WARNING: THIS MODEL IS NOT TRAINED.
 
-    The number of filters and fully-conected units are divided by 64 and the
+    The number of filters and fully-connected units are divided by 64 and the
     weights are randomly initialized.
 
     This models is created for testing purposes only due to the huge size of the
@@ -475,8 +484,6 @@ def define_small_vggish_slim(x, is_training, num_classes):
     The op 'vggish/embeddings'.
     """
 
-    slim = tf.contrib.slim
-
     # Architectural constants.
     EMBEDDING_SIZE = 128  # Size of embedding layer.
     NUM_FRAMES = 96  # Frames in input mel-spectrogram patch.
@@ -490,44 +497,45 @@ def define_small_vggish_slim(x, is_training, num_classes):
     # - All convolutions are 3x3 with stride 1 and SAME padding.
     # - All max-pools are 2x2 with stride 2 and SAME padding.
 
-    with slim.arg_scope([slim.conv2d, slim.fully_connected],
-                        weights_initializer=tf.truncated_normal_initializer(
-                            stddev=INIT_STDDEV),
-                        biases_initializer=tf.zeros_initializer(),
-                        activation_fn=tf.nn.relu,
-                        trainable=False), \
-        slim.arg_scope([slim.conv2d],
-                        kernel_size=[3, 3], stride=1, padding='SAME'), \
-        slim.arg_scope([slim.max_pool2d],
-                        kernel_size=[2, 2], stride=2, padding='SAME'), \
-        tf.variable_scope('vggish'):
-
+    with slim.arg_scope(
+        [slim.conv2d, slim.fully_connected],
+        weights_initializer=tf.truncated_normal_initializer(stddev=INIT_STDDEV),
+        biases_initializer=tf.zeros_initializer(),
+        activation_fn=tf.nn.relu,
+        trainable=False,
+    ), slim.arg_scope([slim.conv2d], kernel_size=[3, 3], stride=1, padding="SAME"), slim.arg_scope(
+        [slim.max_pool2d], kernel_size=[2, 2], stride=2, padding="SAME"
+    ), tf.variable_scope(
+        "vggish"
+    ):
+        # Input: a batch of 2-D log-mel-spectrogram patches.
+        if features_tensor is None:
+            features_tensor = tf.placeholder(tf.float32, shape=(None, NUM_FRAMES, NUM_BANDS), name="input_features")
         # Reshape to 4-D so that we can convolve a batch with conv2d().
-        net = tf.reshape(x, [-1, NUM_FRAMES, NUM_BANDS, 1])
+        net = tf.reshape(features_tensor, [-1, NUM_FRAMES, NUM_BANDS, 1])
 
         # The VGG stack of alternating convolutions and max-pools.
-        net = slim.conv2d(net, 1, scope='conv1')
-        net = slim.max_pool2d(net, scope='pool1')
-        net = slim.conv2d(net, 2, scope='conv2')
-        net = slim.max_pool2d(net, scope='pool2')
-        net = slim.repeat(net, 2, slim.conv2d, 4, scope='conv3')
-        net = slim.max_pool2d(net, scope='pool3')
-        net = slim.repeat(net, 2, slim.conv2d, 8, scope='conv4')
-        net = slim.max_pool2d(net, scope='pool4')
+        net = slim.conv2d(net, 1, scope="conv1")
+        net = slim.max_pool2d(net, scope="pool1")
+        net = slim.conv2d(net, 2, scope="conv2")
+        net = slim.max_pool2d(net, scope="pool2")
+        net = slim.repeat(net, 2, slim.conv2d, 4, scope="conv3")
+        net = slim.max_pool2d(net, scope="pool3")
+        net = slim.repeat(net, 2, slim.conv2d, 8, scope="conv4")
+        net = slim.max_pool2d(net, scope="pool4")
 
         # Flatten before entering fully-connected layers
         net = slim.flatten(net)
-        net = slim.repeat(net, 2, slim.fully_connected, 64, scope='fc1')
+        net = slim.repeat(net, 2, slim.fully_connected, 64, scope="fc1")
         # The embedding layer.
-        embeddings = slim.fully_connected(net, EMBEDDING_SIZE, scope='fc2')
-
-    num_units = 100
-    fc = slim.fully_connected(embeddings, num_units)
+        embeddings = slim.fully_connected(net, EMBEDDING_SIZE, scope="fc2", activation_fn=None)
 
     # Add a classifier layer at the end, consisting of parallel logistic
     # classifiers, one per class. This allows for multi-class tasks.
-    logits = slim.fully_connected(
-        fc, num_classes, activation_fn=None, scope='logits')
-    tf.sigmoid(logits, name='prediction')
+    num_units = 100
+    fc = slim.fully_connected(tf.nn.relu(embeddings), num_units)
 
-    return tf.identity(logits, name='logits')
+    logits = slim.fully_connected(fc, num_classes, activation_fn=None, scope="logits")
+    tf.sigmoid(logits, name="prediction")
+
+    return tf.identity(logits, name="logits")
