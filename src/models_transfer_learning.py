@@ -1,5 +1,5 @@
 import tensorflow as tf
-tf.disable_v2_behavior()
+tf.compat.v1.disable_v2_behavior()
 
 import tf_slim as slim
 from flip_gradient import flip_gradient
