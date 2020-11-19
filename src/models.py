@@ -1,11 +1,13 @@
-import tensorflow as tf
-import models_frontend as frontend
-import models_midend as midend
 import models_backend as backend
 import models_baselines
+import models_frontend as frontend
+import models_midend as midend
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
 
 # disabling deprecation warnings (caused by change from tensorflow 1.x to 2.x)
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+tf.logging.set_verbosity(tf.logging.ERROR)
 
 def model_number(x, is_training, config):
     if config['load_model'] is not None:

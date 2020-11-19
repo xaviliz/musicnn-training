@@ -1,16 +1,16 @@
 import argparse
-import os
 import json
+import os
+
+import numpy as np
 import pescador
 import shared
-import train
-import numpy as np
-import tensorflow as tf
-from tqdm import tqdm
-import yaml
-from argparse import Namespace
-from data_loaders import data_gen_standard as data_gen
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 
+import train
+from data_loaders import data_gen_standard as data_gen
+from tqdm import tqdm
 
 TEST_BATCH_SIZE = 64
 
