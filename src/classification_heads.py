@@ -10,12 +10,11 @@ def regular(y, config):
         # VGGish models already defined their classification head
         return y
     else:
-        initializer = tf.initializers.variance_scaling(scale=2.0, seed=config["seed"])
         return tf.layers.dense(
             inputs=y,
             activation=None,
             units=config["num_classes_dataset"],
-            kernel_initializer=initializer,
+            kernel_initializer=tf.initializers.variance_scaling(scale=2.0, seed=config["seed"]),
         )
 
 

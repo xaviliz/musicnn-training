@@ -286,9 +286,11 @@ def backend(feature_map, is_training, num_classes, output_units, config, type):
     if not num_classes:
         return dense_dropout, mean_pool, max_pool
     else:
-        initializer = tf.initializers.variance_scaling(scale=2.0, seed=config["seed"])
         ld = tf.layers.dense(
-            inputs=dense_dropout, activation=tf.nn.relu, units=num_classes, kernel_initializer=initializer
+            inputs=dense_dropout,
+            activation=tf.nn.relu,
+            units=num_classes,
+            kernel_initializer=tf.initializers.variance_scaling(scale=2.0, seed=config["seed"]),
         )
 
         return ld, mean_pool, max_pool
@@ -370,9 +372,11 @@ def vgg(x, is_training, num_classes, config, num_filters=32):
     if not num_classes:
         return do_pool5
     else:
-        initializer = tf.initializers.variance_scaling(scale=2.0, seed=config["seed"])
         return tf.layers.dense(
-            inputs=do_pool5, activation=tf.nn.relu, units=num_classes, kernel_initializer=initializer
+            inputs=do_pool5,
+            activation=tf.nn.relu,
+            units=num_classes,
+            kernel_initializer=tf.initializers.variance_scaling(scale=2.0, seed=config["seed"]),
         )
 
 
