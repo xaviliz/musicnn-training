@@ -10,7 +10,7 @@ def regular(y, config):
         # VGGish models already defined their classification head
         return y
     else:
-        initializer = tf.keras.initializers.VarianceScaling(scale=2.0, seed=config["seed"])
+        initializer = tf.initializers.variance_scaling(scale=2.0, seed=config["seed"])
         return tf.layers.dense(
             inputs=y,
             activation=None,
@@ -27,7 +27,7 @@ def adversarial_type_a(y, config):
     """
     d_ = tf.placeholder(tf.float32, [None, config["discriminator_dimensions"]])
 
-    initializer = tf.keras.initializers.VarianceScaling(scale=2.0, seed=config["seed"])
+    initializer = tf.initializers.variance_scaling(scale=2.0, seed=config["seed"])
     y = tf.layers.dense(
         inputs=y,
         activation=None,
@@ -76,7 +76,7 @@ def adversarial_type_b(y, config):
     # Gradient projection layer
     y, d = gradient_projection(shared_dense, flipped)
 
-    initializer = tf.keras.initializers.VarianceScaling(scale=2.0, seed=config["seed"])
+    initializer = tf.initializers.variance_scaling(scale=2.0, seed=config["seed"])
     y = tf.layers.dense(
         inputs=tf.reshape(y, [-1, config["coupling_layer_units"]]),
         activation=None,
@@ -105,7 +105,7 @@ def adversarial_grl(y, config):
     lam = tf.placeholder(tf.float32)
     flipped = flip_gradient(coupling_layer, lam)
 
-    initializer = tf.keras.initializers.VarianceScaling(scale=2.0, seed=config["seed"])
+    initializer = tf.initializers.variance_scaling(scale=2.0, seed=config["seed"])
     y = tf.layers.dense(
         inputs=coupling_layer,
         activation=tf.nn.relu,
