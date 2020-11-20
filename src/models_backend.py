@@ -62,8 +62,8 @@ def temporal_pooling(feature_map, is_training, num_classes_dataset, num_units_ba
         tmp_pool = tf.concat([max_pool, avg_pool], 1)
 
     print('Temporal pooling: ' + str(tmp_pool.shape))
-    # dense layer with droupout
-    flat_pool = tf.contrib.layers.flatten(tmp_pool)
+    # dense layer with dropout
+    flat_pool = tf.layers.flatten(tmp_pool)
     flat_pool = tf.layers.batch_normalization(flat_pool, training=is_training, trainable=trainable)
     flat_pool_dropout = tf.layers.dropout(flat_pool, rate=0.5, training=is_training, seed=config["seed"])
     dense = tf.layers.dense(

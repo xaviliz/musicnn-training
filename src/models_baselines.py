@@ -135,7 +135,7 @@ def vgg(x, is_training, config, num_filters=32):
     pool5 = tf.layers.max_pooling2d(inputs=bn_conv5, pool_size=[4, 4], strides=[4, 4])
     print('pool5: ' + str(pool5.get_shape))
 
-    flat_pool5 = tf.contrib.layers.flatten(pool5)
+    flat_pool5 = tf.layers.flatten(pool5)
     do_pool5 = tf.layers.dropout(flat_pool5, rate=0.5, training=is_training, seed=config["seed"])
     output = tf.layers.dense(
         inputs=do_pool5,
