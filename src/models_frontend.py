@@ -1,9 +1,11 @@
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
 
 def musically_motivated_cnns(x, is_training, yInput, num_filt, config, type, trainable=True):
 
     expanded_layer = tf.expand_dims(x, 3)
-    input_layer = tf.compat.v1.layers.batch_normalization(expanded_layer, training=is_training, trainable=trainable)
+    input_layer = tf.layers.batch_normalization(expanded_layer, training=is_training, trainable=trainable)
 
     input_pad_7 = tf.pad(input_layer, [[0, 0], [3, 3], [0, 0], [0, 0]], "CONSTANT")
 
@@ -62,32 +64,32 @@ def musically_motivated_cnns(x, is_training, yInput, num_filt, config, type, tra
 
 def timbral_block(inputs, filters, kernel_size, is_training, config, padding="valid", activation=tf.nn.relu, trainable=True):
 
-    conv = tf.compat.v1.layers.conv2d(inputs=inputs,
-                            filters=filters,
-                            kernel_size=kernel_size,
-                            padding=padding,
-                            activation=activation,
-                            trainable=trainable,
-                            kernel_initializer=tf.contrib.layers.variance_scaling_initializer(seed=config['seed']))
-    bn_conv = tf.compat.v1.layers.batch_normalization(conv, training=is_training, trainable=trainable)
-    pool = tf.compat.v1.layers.max_pooling2d(inputs=bn_conv,
-                                   pool_size=[1, bn_conv.shape[2]],
-                                   strides=[1, bn_conv.shape[2]])
+    conv = tf.layers.conv2d(
+        inputs=inputs,
+        filters=filters,
+        kernel_size=kernel_size,
+        padding=padding,
+        activation=activation,
+        trainable=trainable,
+        kernel_initializer=tf.initializers.variance_scaling(scale=2.0, seed=config["seed"]),
+    )
+    bn_conv = tf.layers.batch_normalization(conv, training=is_training, trainable=trainable)
+    pool = tf.layers.max_pooling2d(inputs=bn_conv, pool_size=[1, bn_conv.shape[2]], strides=[1, bn_conv.shape[2]])
     return tf.squeeze(pool, [2])
 
 
 def tempo_block(inputs, filters, kernel_size, is_training, config, padding="same", activation=tf.nn.relu, trainable=True):
 
-    conv = tf.compat.v1.layers.conv2d(inputs=inputs,
-                            filters=filters,
-                            kernel_size=kernel_size,
-                            padding=padding,
-                            activation=activation,
-                            trainable=trainable,
-                            kernel_initializer=tf.contrib.layers.variance_scaling_initializer(seed=config['seed']))
-    bn_conv = tf.compat.v1.layers.batch_normalization(conv, training=is_training, trainable=trainable)
-    pool = tf.compat.v1.layers.max_pooling2d(inputs=bn_conv,
-                                   pool_size=[1, bn_conv.shape[2]],
-                                   strides=[1, bn_conv.shape[2]])
+    conv = tf.layers.conv2d(
+        inputs=inputs,
+        filters=filters,
+        kernel_size=kernel_size,
+        padding=padding,
+        activation=activation,
+        trainable=trainable,
+        kernel_initializer=tf.initializers.variance_scaling(scale=2.0, seed=config["seed"]),
+    )
+    bn_conv = tf.layers.batch_normalization(conv, training=is_training, trainable=trainable)
+    pool = tf.layers.max_pooling2d(inputs=bn_conv, pool_size=[1, bn_conv.shape[2]], strides=[1, bn_conv.shape[2]])
     return tf.squeeze(pool, [2])
 

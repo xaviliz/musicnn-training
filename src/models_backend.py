@@ -1,5 +1,6 @@
-import tensorflow as tf
 import numpy as np
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 
 
 def temporal_pooling(feature_map, is_training, num_classes_dataset, num_units_backend, config, type, return_penultimate=False, trainable=True):
@@ -22,15 +23,21 @@ def temporal_pooling(feature_map, is_training, num_classes_dataset, num_units_ba
             feature_map = tf.add(feature_map, pos_embedding)
 
         # compute attention
-        context=3
-        padded = tf.pad(feature_map, [[0, 0], [int(context/2), int(context/2)], [0, 0]], "CONSTANT")
-        frames_attention = tf.compat.v1.layers.conv1d(inputs=padded,
-                             filters=padded.shape[2],
-                             kernel_size=context,
-                             padding="valid",
-                             activation=None,
-                             kernel_initializer=tf.contrib.layers.variance_scaling_initializer(seed=config['seed']))
-        softmax_layer = tf.nn.softmax(frames_attention,axis=1)
+        context = 3
+        padded = tf.pad(
+            feature_map,
+            [[0, 0], [int(context / 2), int(context / 2)], [0, 0]],
+            "CONSTANT",
+        )
+        frames_attention = tf.layers.conv1d(
+            inputs=padded,
+            filters=padded.shape[2],
+            kernel_size=context,
+            padding="valid",
+            activation=None,
+            kernel_initializer=tf.initializers.variance_scaling(scale=2.0, seed=config["seed"]),
+        )
+        softmax_layer = tf.nn.softmax(frames_attention, axis=1)
 
         # apply attention
         weighted = tf.multiply(softmax_layer, feature_map)
@@ -55,32 +62,38 @@ def temporal_pooling(feature_map, is_training, num_classes_dataset, num_units_ba
         tmp_pool = tf.concat([max_pool, avg_pool], 1)
 
     print('Temporal pooling: ' + str(tmp_pool.shape))
-    # dense layer with droupout
-    flat_pool = tf.contrib.layers.flatten(tmp_pool)
-    flat_pool = tf.compat.v1.layers.batch_normalization(flat_pool, training=is_training, trainable=trainable)
-    flat_pool_dropout = tf.layers.dropout(flat_pool, rate=0.5, training=is_training, seed=config['seed'])
-    dense = tf.compat.v1.layers.dense(inputs=flat_pool_dropout,
-                            units=num_units_backend,
-                            activation=tf.nn.relu,
-                            kernel_initializer=tf.contrib.layers.variance_scaling_initializer(seed=config['seed']),
-                            trainable=trainable)
-    bn_dense = tf.compat.v1.layers.batch_normalization(dense, training=is_training, trainable=trainable)
-    dense_dropout = tf.compat.v1.layers.dropout(bn_dense, rate=0.5, training=is_training, seed=config['seed'])
-
+    # dense layer with dropout
+    flat_pool = tf.layers.flatten(tmp_pool)
+    flat_pool = tf.layers.batch_normalization(flat_pool, training=is_training, trainable=trainable)
+    flat_pool_dropout = tf.layers.dropout(flat_pool, rate=0.5, training=is_training, seed=config["seed"])
+    dense = tf.layers.dense(
+        inputs=flat_pool_dropout,
+        units=num_units_backend,
+        activation=tf.nn.relu,
+        kernel_initializer=tf.initializers.variance_scaling(scale=2.0, seed=config["seed"]),
+        trainable=trainable,
+    )
+    bn_dense = tf.layers.batch_normalization(dense, training=is_training, trainable=trainable)
+    dense_dropout = tf.layers.dropout(bn_dense, rate=0.5, training=is_training, seed=config["seed"])
 
     # Smaller dense layer shared betwen tasks/
-    shared_dense = tf.compat.v1.layers.dense(inputs=dense_dropout,
+    shared_dense = tf.layers.dense(
+        inputs=dense_dropout,
         units=num_units_backend // 2,
         activation=None,
-        kernel_initializer=tf.contrib.layers.variance_scaling_initializer(seed=config['seed']))
+        kernel_initializer=tf.initializers.variance_scaling(scale=2.0, seed=config["seed"]),
+    )
 
     if return_penultimate:
         return shared_dense
     else:
-        return tf.compat.v1.layers.dense(inputs=shared_dense,
-                           activation=None,
-                           units=num_classes_dataset,
-                           kernel_initializer=tf.contrib.layers.variance_scaling_initializer(seed=config['seed']))
+        return tf.layers.dense(
+            inputs=shared_dense,
+            activation=None,
+            units=num_classes_dataset,
+            kernel_initializer=tf.initializers.variance_scaling(scale=2.0, seed=config["seed"]),
+        )
+
 
 def positional_encoding(feature_map_size):
     _, T, num_units = feature_map_size

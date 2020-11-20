@@ -1,9 +1,13 @@
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
+import tf_slim as slim
 from flip_gradient import flip_gradient
+
 # from musicnn import configuration as config
 
 # disabling deprecation warnings (caused by change from tensorflow 1.x to 2.x)
-#tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+# tf.logging.set_verbosity(tf.logging.ERROR)
 
 
 def define_model(x, is_training, config):
@@ -114,7 +118,7 @@ def build_musicnn1d(x, is_training, num_classes, config, num_filt_frontend=1.6, 
 def frontend(x, is_training, yInput, num_filt, type):
 
     expand_input = tf.expand_dims(x, 3)
-    normalized_input = tf.compat.v1.layers.batch_normalization(expand_input, training=is_training, trainable=False)
+    normalized_input = tf.layers.batch_normalization(expand_input, training=is_training, trainable=False)
 
     if 'timbral' in type:
 
@@ -159,31 +163,21 @@ def frontend(x, is_training, yInput, num_filt, type):
 
 def timbral_block(inputs, filters, kernel_size, is_training, padding="valid", activation=tf.nn.relu):
 
-    conv = tf.compat.v1.layers.conv2d(inputs=inputs,
-                            filters=filters,
-                            kernel_size=kernel_size,
-                            padding=padding,
-                            activation=activation,
-                            trainable=False)
-    bn_conv = tf.compat.v1.layers.batch_normalization(conv, training=is_training, trainable=False)
-    pool = tf.compat.v1.layers.max_pooling2d(inputs=bn_conv,
-                                   pool_size=[1, bn_conv.shape[2]],
-                                   strides=[1, bn_conv.shape[2]])
+    conv = tf.layers.conv2d(
+        inputs=inputs, filters=filters, kernel_size=kernel_size, padding=padding, activation=activation, trainable=False
+    )
+    bn_conv = tf.layers.batch_normalization(conv, training=is_training, trainable=False)
+    pool = tf.layers.max_pooling2d(inputs=bn_conv, pool_size=[1, bn_conv.shape[2]], strides=[1, bn_conv.shape[2]])
     return tf.squeeze(pool, [2])
 
 
 def tempo_block(inputs, filters, kernel_size, is_training, padding="same", activation=tf.nn.relu):
 
-    conv = tf.compat.v1.layers.conv2d(inputs=inputs,
-                            filters=filters,
-                            kernel_size=kernel_size,
-                            padding=padding,
-                            activation=activation,
-                            trainable=False)
-    bn_conv = tf.compat.v1.layers.batch_normalization(conv, training=is_training, trainable=False)
-    pool = tf.compat.v1.layers.max_pooling2d(inputs=bn_conv,
-                                   pool_size=[1, bn_conv.shape[2]],
-                                   strides=[1, bn_conv.shape[2]])
+    conv = tf.layers.conv2d(
+        inputs=inputs, filters=filters, kernel_size=kernel_size, padding=padding, activation=activation, trainable=False
+    )
+    bn_conv = tf.layers.batch_normalization(conv, training=is_training, trainable=False)
+    pool = tf.layers.max_pooling2d(inputs=bn_conv, pool_size=[1, bn_conv.shape[2]], strides=[1, bn_conv.shape[2]])
     return tf.squeeze(pool, [2])
 
 
@@ -193,36 +187,42 @@ def midend(front_end_output, is_training, num_filt):
 
     # conv layer 1 - adapting dimensions
     front_end_pad = tf.pad(front_end_output, [[0, 0], [3, 3], [0, 0], [0, 0]], "CONSTANT")
-    conv1 = tf.compat.v1.layers.conv2d(inputs=front_end_pad,
-                             filters=num_filt,
-                             kernel_size=[7, front_end_pad.shape[2]],
-                             padding="valid",
-                             activation=tf.nn.relu,
-                             trainable=False)
-    bn_conv1 = tf.compat.v1.layers.batch_normalization(conv1, training=is_training, trainable=False)
+    conv1 = tf.layers.conv2d(
+        inputs=front_end_pad,
+        filters=num_filt,
+        kernel_size=[7, front_end_pad.shape[2]],
+        padding="valid",
+        activation=tf.nn.relu,
+        trainable=False,
+    )
+    bn_conv1 = tf.layers.batch_normalization(conv1, training=is_training, trainable=False)
     bn_conv1_t = tf.transpose(bn_conv1, [0, 1, 3, 2])
 
     # conv layer 2 - residual connection
     bn_conv1_pad = tf.pad(bn_conv1_t, [[0, 0], [3, 3], [0, 0], [0, 0]], "CONSTANT")
-    conv2 = tf.compat.v1.layers.conv2d(inputs=bn_conv1_pad,
-                             filters=num_filt,
-                             kernel_size=[7, bn_conv1_pad.shape[2]],
-                             padding="valid",
-                             activation=tf.nn.relu,
-                             trainable=False)
-    bn_conv2 = tf.compat.v1.layers.batch_normalization(conv2, training=is_training, trainable=False)
+    conv2 = tf.layers.conv2d(
+        inputs=bn_conv1_pad,
+        filters=num_filt,
+        kernel_size=[7, bn_conv1_pad.shape[2]],
+        padding="valid",
+        activation=tf.nn.relu,
+        trainable=False,
+    )
+    bn_conv2 = tf.layers.batch_normalization(conv2, training=is_training, trainable=False)
     conv2 = tf.transpose(bn_conv2, [0, 1, 3, 2])
     res_conv2 = tf.add(conv2, bn_conv1_t)
 
     # conv layer 3 - residual connection
     bn_conv2_pad = tf.pad(res_conv2, [[0, 0], [3, 3], [0, 0], [0, 0]], "CONSTANT")
-    conv3 = tf.compat.v1.layers.conv2d(inputs=bn_conv2_pad,
-                             filters=num_filt,
-                             kernel_size=[7, bn_conv2_pad.shape[2]],
-                             padding="valid",
-                             activation=tf.nn.relu,
-                             trainable=False)
-    bn_conv3 = tf.compat.v1.layers.batch_normalization(conv3, training=is_training, trainable=False)
+    conv3 = tf.layers.conv2d(
+        inputs=bn_conv2_pad,
+        filters=num_filt,
+        kernel_size=[7, bn_conv2_pad.shape[2]],
+        padding="valid",
+        activation=tf.nn.relu,
+        trainable=False,
+    )
+    bn_conv3 = tf.layers.batch_normalization(conv3, training=is_training, trainable=False)
     conv3 = tf.transpose(bn_conv3, [0, 1, 3, 2])
     res_conv3 = tf.add(conv3, res_conv2)
 
@@ -235,36 +235,27 @@ def midend1d(front_end_output, is_training, num_filt):
 
     # conv layer 1 - adapting dimensions
     front_end_pad = tf.pad(front_end_output, [[0, 0], [3, 3], [0, 0]], "CONSTANT")
-    conv1 = tf.compat.v1.layers.conv1d(inputs=front_end_pad,
-                             filters=num_filt,
-                             kernel_size=7,
-                             padding="valid",
-                             activation=tf.nn.relu,
-                             trainable=False)
-    bn_conv1 = tf.compat.v1.layers.batch_normalization(conv1, training=is_training, trainable=False)
+    conv1 = tf.layers.conv1d(
+        inputs=front_end_pad, filters=num_filt, kernel_size=7, padding="valid", activation=tf.nn.relu, trainable=False
+    )
+    bn_conv1 = tf.layers.batch_normalization(conv1, training=is_training, trainable=False)
     # bn_conv1_t = tf.transpose(bn_conv1, [0, 1, 3, 2])
 
     # conv layer 2 - residual connection
     bn_conv1_pad = tf.pad(bn_conv1, [[0, 0], [3, 3], [0, 0]], "CONSTANT")
-    conv2 = tf.compat.v1.layers.conv1d(inputs=bn_conv1_pad,
-                             filters=num_filt,
-                             kernel_size=7,
-                             padding="valid",
-                             activation=tf.nn.relu,
-                             trainable=False)
-    bn_conv2 = tf.compat.v1.layers.batch_normalization(conv2, training=is_training, trainable=False)
+    conv2 = tf.layers.conv1d(
+        inputs=bn_conv1_pad, filters=num_filt, kernel_size=7, padding="valid", activation=tf.nn.relu, trainable=False
+    )
+    bn_conv2 = tf.layers.batch_normalization(conv2, training=is_training, trainable=False)
     # conv2 = tf.transpose(bn_conv2, [0, 1, 3, 2])
     res_conv2 = tf.add(conv2, bn_conv1)
 
     # conv layer 3 - residual connection
     bn_conv2_pad = tf.pad(res_conv2, [[0, 0], [3, 3], [0, 0]], "CONSTANT")
-    conv3 = tf.compat.v1.layers.conv1d(inputs=bn_conv2_pad,
-                             filters=num_filt,
-                             kernel_size=7,
-                             padding="valid",
-                             activation=tf.nn.relu,
-                             trainable=False)
-    bn_conv3 = tf.compat.v1.layers.batch_normalization(conv3, training=is_training, trainable=False)
+    conv3 = tf.layers.conv1d(
+        inputs=bn_conv2_pad, filters=num_filt, kernel_size=7, padding="valid", activation=tf.nn.relu, trainable=False
+    )
+    bn_conv3 = tf.layers.batch_normalization(conv3, training=is_training, trainable=False)
     # conv3 = tf.transpose(bn_conv3, [0, 1, 3, 2])
     res_conv3 = tf.add(conv3, res_conv2)
 
@@ -284,120 +275,136 @@ def backend(feature_map, is_training, num_classes, output_units, config, type):
     tmp_pool = tf.concat([max_pool, mean_pool], n_tmp_pool)
 
     # penultimate dense layer
-    flat_pool = tf.compat.v1.layers.flatten(tmp_pool)
-    flat_pool = tf.compat.v1.layers.batch_normalization(flat_pool, training=False, trainable=False)
-    flat_pool_dropout = tf.compat.v1.layers.dropout(flat_pool, rate=0.5, training=False)
-    dense = tf.compat.v1.layers.dense(inputs=flat_pool_dropout,
-                            units=output_units,
-                            activation=tf.nn.relu,
-                            trainable=False)
-    bn_dense = tf.compat.v1.layers.batch_normalization(dense, training=False, trainable=False)
-    dense_dropout = tf.compat.v1.layers.dropout(bn_dense, rate=0.5, training=False)
+    flat_pool = tf.layers.flatten(tmp_pool)
+    flat_pool = tf.layers.batch_normalization(flat_pool, training=False, trainable=False)
+    flat_pool_dropout = tf.layers.dropout(flat_pool, rate=0.5, training=False)
+    dense = tf.layers.dense(inputs=flat_pool_dropout, units=output_units, activation=tf.nn.relu, trainable=False)
+    bn_dense = tf.layers.batch_normalization(dense, training=False, trainable=False)
+    dense_dropout = tf.layers.dropout(bn_dense, rate=0.5, training=False)
 
     # output dense layer
     if not num_classes:
         return dense_dropout, mean_pool, max_pool
     else:
-        ld = tf.compat.v1.layers.dense(inputs=dense_dropout,
-                               activation=tf.nn.relu,
-                               units=num_classes,
-                               kernel_initializer=tf.contrib.layers.variance_scaling_initializer(seed=config['seed']))
+        ld = tf.layers.dense(
+            inputs=dense_dropout,
+            activation=tf.nn.relu,
+            units=num_classes,
+            kernel_initializer=tf.initializers.variance_scaling(scale=2.0, seed=config["seed"]),
+        )
 
         return ld, mean_pool, max_pool
-
 
 
 def vgg(x, is_training, num_classes, config, num_filters=32):
     non_trainable = False
 
     input_layer = tf.expand_dims(x, 3)
-    bn_input = tf.compat.v1.layers.batch_normalization(input_layer, training=non_trainable, trainable=non_trainable)
+    bn_input = tf.layers.batch_normalization(input_layer, training=non_trainable, trainable=non_trainable)
 
-    conv1 = tf.compat.v1.layers.conv2d(inputs=bn_input,
-                             filters=num_filters,
-                             kernel_size=[3, 3],
-                             padding='same',
-                             activation=tf.nn.relu,
-                             name='1CNN',
-                             trainable=non_trainable)
-    bn_conv1 = tf.compat.v1.layers.batch_normalization(conv1, training=non_trainable, trainable=non_trainable)
-    pool1 = tf.compat.v1.layers.max_pooling2d(inputs=bn_conv1, pool_size=[4, 1], strides=[2, 2])
+    conv1 = tf.layers.conv2d(
+        inputs=bn_input,
+        filters=num_filters,
+        kernel_size=[3, 3],
+        padding="same",
+        activation=tf.nn.relu,
+        name="1CNN",
+        trainable=non_trainable,
+    )
+    bn_conv1 = tf.layers.batch_normalization(conv1, training=non_trainable, trainable=non_trainable)
+    pool1 = tf.layers.max_pooling2d(inputs=bn_conv1, pool_size=[4, 1], strides=[2, 2])
 
-    do_pool1 = tf.compat.v1.layers.dropout(pool1, rate=0.25, training=non_trainable)
-    conv2 = tf.compat.v1.layers.conv2d(inputs=do_pool1,
-                             filters=num_filters,
-                             kernel_size=[3, 3],
-                             padding='same',
-                             activation=tf.nn.relu,
-                             name='2CNN',
-                             trainable=non_trainable)
-    bn_conv2 = tf.compat.v1.layers.batch_normalization(conv2, training=non_trainable, trainable=non_trainable)
-    pool2 = tf.compat.v1.layers.max_pooling2d(inputs=bn_conv2, pool_size=[2, 2], strides=[2, 2])
+    do_pool1 = tf.layers.dropout(pool1, rate=0.25, training=non_trainable)
+    conv2 = tf.layers.conv2d(
+        inputs=do_pool1,
+        filters=num_filters,
+        kernel_size=[3, 3],
+        padding="same",
+        activation=tf.nn.relu,
+        name="2CNN",
+        trainable=non_trainable,
+    )
+    bn_conv2 = tf.layers.batch_normalization(conv2, training=non_trainable, trainable=non_trainable)
+    pool2 = tf.layers.max_pooling2d(inputs=bn_conv2, pool_size=[2, 2], strides=[2, 2])
 
-    do_pool2 = tf.compat.v1.layers.dropout(pool2, rate=0.25, training=non_trainable)
-    conv3 = tf.compat.v1.layers.conv2d(inputs=do_pool2,
-                             filters=num_filters,
-                             kernel_size=[3, 3],
-                             padding='same',
-                             activation=tf.nn.relu,
-                             name='3CNN',
-                             trainable=non_trainable)
-    bn_conv3 = tf.compat.v1.layers.batch_normalization(conv3, training=non_trainable, trainable=non_trainable)
-    pool3 = tf.compat.v1.layers.max_pooling2d(inputs=bn_conv3, pool_size=[2, 2], strides=[2, 2])
+    do_pool2 = tf.layers.dropout(pool2, rate=0.25, training=non_trainable)
+    conv3 = tf.layers.conv2d(
+        inputs=do_pool2,
+        filters=num_filters,
+        kernel_size=[3, 3],
+        padding="same",
+        activation=tf.nn.relu,
+        name="3CNN",
+        trainable=non_trainable,
+    )
+    bn_conv3 = tf.layers.batch_normalization(conv3, training=non_trainable, trainable=non_trainable)
+    pool3 = tf.layers.max_pooling2d(inputs=bn_conv3, pool_size=[2, 2], strides=[2, 2])
 
-    do_pool3 = tf.compat.v1.layers.dropout(pool3, rate=0.25, training=non_trainable)
-    conv4 = tf.compat.v1.layers.conv2d(inputs=do_pool3,
-                             filters=num_filters,
-                             kernel_size=[3, 3],
-                             padding='same',
-                             activation=tf.nn.relu,
-                             name='4CNN',
-                             trainable=non_trainable)
-    bn_conv4 = tf.compat.v1.layers.batch_normalization(conv4, training=non_trainable, trainable=non_trainable)
-    pool4 = tf.compat.v1.layers.max_pooling2d(inputs=bn_conv4, pool_size=[2, 2], strides=[2, 2])
+    do_pool3 = tf.layers.dropout(pool3, rate=0.25, training=non_trainable)
+    conv4 = tf.layers.conv2d(
+        inputs=do_pool3,
+        filters=num_filters,
+        kernel_size=[3, 3],
+        padding="same",
+        activation=tf.nn.relu,
+        name="4CNN",
+        trainable=non_trainable,
+    )
+    bn_conv4 = tf.layers.batch_normalization(conv4, training=non_trainable, trainable=non_trainable)
+    pool4 = tf.layers.max_pooling2d(inputs=bn_conv4, pool_size=[2, 2], strides=[2, 2])
 
-    do_pool4 = tf.compat.v1.layers.dropout(pool4, rate=0.25, training=non_trainable)
-    conv5 = tf.compat.v1.layers.conv2d(inputs=do_pool4,
-                             filters=num_filters,
-                             kernel_size=[3, 3],
-                             padding='same',
-                             activation=tf.nn.relu,
-                             name='5CNN',
-                             trainable=non_trainable)
-    bn_conv5 = tf.compat.v1.layers.batch_normalization(conv5, training=is_training, trainable=non_trainable)
-    pool5 = tf.compat.v1.layers.max_pooling2d(inputs=bn_conv5, pool_size=[4, 4], strides=[4, 4])
+    do_pool4 = tf.layers.dropout(pool4, rate=0.25, training=non_trainable)
+    conv5 = tf.layers.conv2d(
+        inputs=do_pool4,
+        filters=num_filters,
+        kernel_size=[3, 3],
+        padding="same",
+        activation=tf.nn.relu,
+        name="5CNN",
+        trainable=non_trainable,
+    )
+    bn_conv5 = tf.layers.batch_normalization(conv5, training=is_training, trainable=non_trainable)
+    pool5 = tf.layers.max_pooling2d(inputs=bn_conv5, pool_size=[4, 4], strides=[4, 4])
 
-    flat_pool5 = tf.compat.v1.layers.flatten(pool5)
-    do_pool5 = tf.compat.v1.layers.dropout(flat_pool5, rate=0.5, training=non_trainable)
-    
+    flat_pool5 = tf.layers.flatten(pool5)
+    do_pool5 = tf.layers.dropout(flat_pool5, rate=0.5, training=non_trainable)
+
     if not num_classes:
         return do_pool5
     else:
-        return tf.compat.v1.layers.dense(inputs=do_pool5,
-                                activation=tf.nn.relu,
-                                units=num_classes,
-                                kernel_initializer=tf.contrib.layers.variance_scaling_initializer(seed=config['seed']))
+        return tf.layers.dense(
+            inputs=do_pool5,
+            activation=tf.nn.relu,
+            units=num_classes,
+            kernel_initializer=tf.initializers.variance_scaling(scale=2.0, seed=config["seed"]),
+        )
 
 
-def define_vggish_slim(x, is_training, num_classes):
+def define_vggish_slim(features_tensor, is_training, num_classes):
     """Defines the VGGish TensorFlow model.
     All ops are created in the current default graph, under the scope 'vggish/'.
-    The input is a placeholder named 'vggish/input_features' of type float32 and
-    shape [batch_size, num_frames, num_bands] where batch_size is variable and
-    num_frames and num_bands are constants, and [num_frames, num_bands] represents
-    a log-mel-scale spectrogram patch covering num_bands frequency bands and
-    num_frames time frames (where each frame step is usually 10ms). This is
-    produced by computing the stabilized log(mel-spectrogram + params.LOG_OFFSET).
-    The output is an op named 'vggish/embedding' which produces the activations of
-    a 128-D embedding layer, which is usually the penultimate layer when used as
-    part of a full model with a final classifier layer.
+    The input is either a tensor passed in via the optional 'features_tensor'
+    argument or a placeholder created below named 'vggish/input_features'. The
+    input is expected to have dtype float32 and shape [batch_size, num_frames,
+    num_bands] where batch_size is variable and num_frames and num_bands are
+    constants, and [num_frames, num_bands] represents a log-mel-scale spectrogram
+    patch covering num_bands frequency bands and num_frames time frames (where
+    each frame step is usually 10ms). This is produced by computing the stabilized
+    log(mel-spectrogram + params.LOG_OFFSET).  The output is a tensor named
+    'vggish/embedding' which produces the pre-activation values of a 128-D
+    embedding layer, which is usually the penultimate layer when used as part of a
+    full model with a final classifier layer.
     Args:
-    training: If true, all parameters are marked trainable.
+      features_tensor: If not None, the tensor containing the input features.
+        If None, a placeholder input is created.
+      training: If true, all parameters are marked trainable.
     Returns:
-    The op 'vggish/embeddings'.
-    """
+      The op 'vggish/embeddings'.
 
-    slim = tf.contrib.slim
+    Note:
+        This implementation follows the original tensorflow model defined at:
+        https://github.com/tensorflow/models/blob/master/research/audioset/vggish/vggish_slim.py
+    """
 
     # Architectural constants.
     EMBEDDING_SIZE = 128  # Size of embedding layer.
@@ -412,55 +419,56 @@ def define_vggish_slim(x, is_training, num_classes):
     # - All convolutions are 3x3 with stride 1 and SAME padding.
     # - All max-pools are 2x2 with stride 2 and SAME padding.
 
-    with slim.arg_scope([slim.conv2d, slim.fully_connected],
-                        weights_initializer=tf.truncated_normal_initializer(
-                            stddev=INIT_STDDEV),
-                        biases_initializer=tf.zeros_initializer(),
-                        activation_fn=tf.nn.relu,
-                        trainable=False), \
-        slim.arg_scope([slim.conv2d],
-                        kernel_size=[3, 3], stride=1, padding='SAME'), \
-        slim.arg_scope([slim.max_pool2d],
-                        kernel_size=[2, 2], stride=2, padding='SAME'), \
-        tf.variable_scope('vggish'):
-
+    with slim.arg_scope(
+        [slim.conv2d, slim.fully_connected],
+        weights_initializer=tf.truncated_normal_initializer(stddev=INIT_STDDEV),
+        biases_initializer=tf.zeros_initializer(),
+        activation_fn=tf.nn.relu,
+        trainable=False,
+    ), slim.arg_scope([slim.conv2d], kernel_size=[3, 3], stride=1, padding="SAME"), slim.arg_scope(
+        [slim.max_pool2d], kernel_size=[2, 2], stride=2, padding="SAME"
+    ), tf.variable_scope(
+        "vggish"
+    ):
+        # Input: a batch of 2-D log-mel-spectrogram patches.
+        if features_tensor is None:
+            features_tensor = tf.placeholder(tf.float32, shape=(None, NUM_FRAMES, NUM_BANDS), name="input_features")
         # Reshape to 4-D so that we can convolve a batch with conv2d().
-        net = tf.reshape(x, [-1, NUM_FRAMES, NUM_BANDS, 1])
+        net = tf.reshape(features_tensor, [-1, NUM_FRAMES, NUM_BANDS, 1])
 
         # The VGG stack of alternating convolutions and max-pools.
-        net = slim.conv2d(net, 64, scope='conv1')
-        net = slim.max_pool2d(net, scope='pool1')
-        net = slim.conv2d(net, 128, scope='conv2')
-        net = slim.max_pool2d(net, scope='pool2')
-        net = slim.repeat(net, 2, slim.conv2d, 256, scope='conv3')
-        net = slim.max_pool2d(net, scope='pool3')
-        net = slim.repeat(net, 2, slim.conv2d, 512, scope='conv4')
-        net = slim.max_pool2d(net, scope='pool4')
+        net = slim.conv2d(net, 64, scope="conv1")
+        net = slim.max_pool2d(net, scope="pool1")
+        net = slim.conv2d(net, 128, scope="conv2")
+        net = slim.max_pool2d(net, scope="pool2")
+        net = slim.repeat(net, 2, slim.conv2d, 256, scope="conv3")
+        net = slim.max_pool2d(net, scope="pool3")
+        net = slim.repeat(net, 2, slim.conv2d, 512, scope="conv4")
+        net = slim.max_pool2d(net, scope="pool4")
 
         # Flatten before entering fully-connected layers
         net = slim.flatten(net)
-        net = slim.repeat(net, 2, slim.fully_connected, 4096, scope='fc1')
+        net = slim.repeat(net, 2, slim.fully_connected, 4096, scope="fc1")
         # The embedding layer.
-        embeddings = slim.fully_connected(net, EMBEDDING_SIZE, scope='fc2')
+        embeddings = slim.fully_connected(net, EMBEDDING_SIZE, scope="fc2", activation_fn=None)
         # return tf.identity(embeddings, name='embeddings')
-
-    num_units = 100
-    fc = slim.fully_connected(embeddings, num_units)
 
     # Add a classifier layer at the end, consisting of parallel logistic
     # classifiers, one per class. This allows for multi-class tasks.
-    logits = slim.fully_connected(
-        fc, num_classes, activation_fn=None, scope='logits')
-    tf.sigmoid(logits, name='prediction')
+    num_units = 100
+    fc = slim.fully_connected(tf.nn.relu(embeddings), num_units)
 
-    return tf.identity(logits, name='logits')
+    logits = slim.fully_connected(fc, num_classes, activation_fn=None, scope="logits")
+    tf.sigmoid(logits, name="prediction")
+
+    return tf.identity(logits, name="logits")
 
 
-def define_small_vggish_slim(x, is_training, num_classes):
+def define_small_vggish_slim(features_tensor, is_training, num_classes):
     """Defines a small VGGish TensorFlow model.
     WARNING: THIS MODEL IS NOT TRAINED.
 
-    The number of filters and fully-conected units are divided by 64 and the
+    The number of filters and fully-connected units are divided by 64 and the
     weights are randomly initialized.
 
     This models is created for testing purposes only due to the huge size of the
@@ -472,8 +480,6 @@ def define_small_vggish_slim(x, is_training, num_classes):
     The op 'vggish/embeddings'.
     """
 
-    slim = tf.contrib.slim
-
     # Architectural constants.
     EMBEDDING_SIZE = 128  # Size of embedding layer.
     NUM_FRAMES = 96  # Frames in input mel-spectrogram patch.
@@ -487,44 +493,45 @@ def define_small_vggish_slim(x, is_training, num_classes):
     # - All convolutions are 3x3 with stride 1 and SAME padding.
     # - All max-pools are 2x2 with stride 2 and SAME padding.
 
-    with slim.arg_scope([slim.conv2d, slim.fully_connected],
-                        weights_initializer=tf.truncated_normal_initializer(
-                            stddev=INIT_STDDEV),
-                        biases_initializer=tf.zeros_initializer(),
-                        activation_fn=tf.nn.relu,
-                        trainable=False), \
-        slim.arg_scope([slim.conv2d],
-                        kernel_size=[3, 3], stride=1, padding='SAME'), \
-        slim.arg_scope([slim.max_pool2d],
-                        kernel_size=[2, 2], stride=2, padding='SAME'), \
-        tf.variable_scope('vggish'):
-
+    with slim.arg_scope(
+        [slim.conv2d, slim.fully_connected],
+        weights_initializer=tf.truncated_normal_initializer(stddev=INIT_STDDEV),
+        biases_initializer=tf.zeros_initializer(),
+        activation_fn=tf.nn.relu,
+        trainable=False,
+    ), slim.arg_scope([slim.conv2d], kernel_size=[3, 3], stride=1, padding="SAME"), slim.arg_scope(
+        [slim.max_pool2d], kernel_size=[2, 2], stride=2, padding="SAME"
+    ), tf.variable_scope(
+        "vggish"
+    ):
+        # Input: a batch of 2-D log-mel-spectrogram patches.
+        if features_tensor is None:
+            features_tensor = tf.placeholder(tf.float32, shape=(None, NUM_FRAMES, NUM_BANDS), name="input_features")
         # Reshape to 4-D so that we can convolve a batch with conv2d().
-        net = tf.reshape(x, [-1, NUM_FRAMES, NUM_BANDS, 1])
+        net = tf.reshape(features_tensor, [-1, NUM_FRAMES, NUM_BANDS, 1])
 
         # The VGG stack of alternating convolutions and max-pools.
-        net = slim.conv2d(net, 1, scope='conv1')
-        net = slim.max_pool2d(net, scope='pool1')
-        net = slim.conv2d(net, 2, scope='conv2')
-        net = slim.max_pool2d(net, scope='pool2')
-        net = slim.repeat(net, 2, slim.conv2d, 4, scope='conv3')
-        net = slim.max_pool2d(net, scope='pool3')
-        net = slim.repeat(net, 2, slim.conv2d, 8, scope='conv4')
-        net = slim.max_pool2d(net, scope='pool4')
+        net = slim.conv2d(net, 1, scope="conv1")
+        net = slim.max_pool2d(net, scope="pool1")
+        net = slim.conv2d(net, 2, scope="conv2")
+        net = slim.max_pool2d(net, scope="pool2")
+        net = slim.repeat(net, 2, slim.conv2d, 4, scope="conv3")
+        net = slim.max_pool2d(net, scope="pool3")
+        net = slim.repeat(net, 2, slim.conv2d, 8, scope="conv4")
+        net = slim.max_pool2d(net, scope="pool4")
 
         # Flatten before entering fully-connected layers
         net = slim.flatten(net)
-        net = slim.repeat(net, 2, slim.fully_connected, 64, scope='fc1')
+        net = slim.repeat(net, 2, slim.fully_connected, 64, scope="fc1")
         # The embedding layer.
-        embeddings = slim.fully_connected(net, EMBEDDING_SIZE, scope='fc2')
-
-    num_units = 100
-    fc = slim.fully_connected(embeddings, num_units)
+        embeddings = slim.fully_connected(net, EMBEDDING_SIZE, scope="fc2", activation_fn=None)
 
     # Add a classifier layer at the end, consisting of parallel logistic
     # classifiers, one per class. This allows for multi-class tasks.
-    logits = slim.fully_connected(
-        fc, num_classes, activation_fn=None, scope='logits')
-    tf.sigmoid(logits, name='prediction')
+    num_units = 100
+    fc = slim.fully_connected(tf.nn.relu(embeddings), num_units)
 
-    return tf.identity(logits, name='logits')
+    logits = slim.fully_connected(fc, num_classes, activation_fn=None, scope="logits")
+    tf.sigmoid(logits, name="prediction")
+
+    return tf.identity(logits, name="logits")

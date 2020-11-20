@@ -6,7 +6,8 @@ import time
 import yaml
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 import pescador
 
 import shared
@@ -25,7 +26,7 @@ def write_summary(value, tag, step, writer):
     writer.add_summary(summary, step)
 
 def tf_define_model_and_cost(config):
-        return model_and_cost(config, tf.compat.v1.placeholder(tf.bool))
+        return model_and_cost(config, tf.placeholder(tf.bool))
 
 def tf_define_model_and_cost_freeze(config):
         return model_and_cost(config, False)
@@ -33,8 +34,8 @@ def tf_define_model_and_cost_freeze(config):
 def model_and_cost(config, is_train):
     # tensorflow: define the model
     with tf.name_scope('model'):
-        x = tf.compat.v1.placeholder(tf.float32, [None, config['xInput'], config['yInput']])
-        y_ = tf.compat.v1.placeholder(tf.float32, [None, config['num_classes_dataset']])
+        x = tf.placeholder(tf.float32, [None, config['xInput'], config['yInput']])
+        y_ = tf.placeholder(tf.float32, [None, config['num_classes_dataset']])
 
         # choose between transfer learning or fully trainable models
         if config['load_model'] is not None:
@@ -78,8 +79,8 @@ def model_and_cost(config, is_train):
 
             cost = t_cost + d_cost
 
-            acc_task = tf.metrics.accuracy(y_, tf.compat.v1.round(normalized_y))
-            acc_discriminator = tf.metrics.accuracy(d_, tf.compat.v1.round(normalized_d))
+            acc_task = tf.metrics.accuracy(y_, tf.round(normalized_y))
+            acc_discriminator = tf.metrics.accuracy(d_, tf.round(normalized_d))
 
     # print all trainable variables, for debugging
     model_vars = [v for v in tf.global_variables()]
@@ -250,13 +251,13 @@ if __name__ == '__main__':
     if config['load_model'] is not None: # restore model weights from previously saved model
         if config['mode'] == 'adversarial_type_a':
             # Skip the layers we are going to train: 2 tasks X 2 layers X (kernel + bias) = 8
-            saver = tf.compat.v1.train.Saver(var_list=model_vars[:-8])
+            saver = tf.train.Saver(var_list=model_vars[:-8])
         elif config['mode'] == 'adversarial' or config['mode'] == 'adversarial_type_b':
             # Skip the layers we are going to train: 1 task X 3 layers X (kernel + bias) = 6
-            saver = tf.compat.v1.train.Saver(var_list=model_vars[:-6])
+            saver = tf.train.Saver(var_list=model_vars[:-6])
         else:
             # Skip the layers we are going to train: 1 task X 2 layers X (kernel + bias) = 4
-            saver = tf.compat.v1.train.Saver(var_list=model_vars[:-4])
+            saver = tf.train.Saver(var_list=model_vars[:-4])
         saver.restore(sess, config['load_model'])  # end with /!
         print('Pre-trained model loaded!')
 
@@ -264,7 +265,7 @@ if __name__ == '__main__':
 
     # After restoring make it aware of the rest of the variables
     # saver.var_list = model_vars
-    saver = tf.compat.v1.train.Saver()
+    saver = tf.train.Saver()
 
     # writing headers of the train_log.tsv
     fy = open(model_folder + 'train_log.tsv', 'a')

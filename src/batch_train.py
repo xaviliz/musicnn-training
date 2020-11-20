@@ -2,27 +2,24 @@ import argparse
 import json
 import os
 import time
-import random
-import pescador
-import numpy as np
-import tensorflow as tf
-from tensorflow.keras.backend import binary_crossentropy
-
-import shared
-import pickle
-from tensorflow.python.framework import ops
-import yaml
 from argparse import Namespace
+
+import numpy as np
+import pescador
+import shared
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+import yaml
 
 config_file = Namespace(**yaml.load(open('config_file.yaml'), Loader=yaml.SafeLoader))
 
 
 def tf_define_model_and_cost(config):
     # tensorflow: define the model
-    with tf.name_scope('model'):
-        x = tf.compat.v1.placeholder(tf.float32, [None, config['xInput'], config['yInput']])
-        y_ = tf.compat.v1.placeholder(tf.float32, [None, config['num_classes_dataset']])
-        is_train = tf.compat.v1.placeholder(tf.bool)
+    with tf.name_scope("model"):
+        x = tf.placeholder(tf.float32, [None, config["xInput"], config["yInput"]])
+        y_ = tf.placeholder(tf.float32, [None, config["num_classes_dataset"]])
+        is_train = tf.placeholder(tf.bool)
 
         # choose between transfer learning or fully trainable models
         if config['load_model'] is not None:
@@ -162,9 +159,9 @@ if __name__ == '__main__':
     saver = tf.train.Saver()
     if config['load_model'] is not None:  # restore model weights from previously saved model
         if config['model_number'] == 20 or 11 or 15:
-            saver = tf.compat.v1.train.Saver(var_list=model_vars[:-4])
+            saver = tf.train.Saver(var_list=model_vars[:-4])
         else:
-            saver = tf.compat.v1.train.Saver(var_list=model_vars[:-2])
+            saver = tf.train.Saver(var_list=model_vars[:-2])
         saver.restore(sess, config['load_model'])  # end with /!
         print('Pre-trained model loaded!')
 
@@ -172,7 +169,7 @@ if __name__ == '__main__':
 
     # After restoring make it aware of the rest of the variables
     # saver.var_list = model_vars
-    saver = tf.compat.v1.train.Saver()
+    saver = tf.train.Saver()
 
     # writing headers of the train_log.tsv
     fy = open(model_folder + 'train_log.tsv', 'a')
