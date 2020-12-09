@@ -56,7 +56,7 @@ def feature_ol3(audio_file):
         melbands = 10. * np.log10(melbands)
         melbands = melbands - np.max(melbands)
         melbands = np.clip(melbands, -DRANGE, None)
-        batch = np.expand_dims(melbands, (0, 3))
+        batch = np.expand_dims(np.expand_dims(melbands, axis=0), axis=3)
 
         pool.set(INPUT, batch)
         embeddings.append(tfp(pool)[OUTPUT].squeeze())
