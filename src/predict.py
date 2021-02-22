@@ -71,11 +71,16 @@ if __name__ == '__main__':
         config = json.load(open(os.path.join(experiment_folder, 'config.json')))
         config['mode'] = 'regular'
 
+        if 'melspectrogram' in config['audio_rep']['type']:
+            config['xInput'] = config['n_frames']
+        elif config['audio_rep']['type'] == 'embeddings':
+            config['xInput'] = 1
+
         print('Experiment: ' + str(model))
         print('\n' + str(config))
 
         # pescador: define (finite, batched & parallel) streamer
-        pack = [config, 'overlap_sampling', config['n_frames'], False]
+        pack = [config, 'overlap_sampling', config['xInput'], False]
         streams = [pescador.Streamer(data_gen, id, id2audio_repr_path[id], [0] * config['num_classes_dataset'], pack) for id in ids]
         mux_stream = pescador.ChainMux(streams, mode='exhaustive')
         batch_streamer = pescador.Streamer(pescador.buffer_stream, mux_stream, buffer_size=TEST_BATCH_SIZE, partial=True)

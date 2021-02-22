@@ -56,7 +56,7 @@ def get_lowlevel_descriptors_groundtruth(config, id2audio_repr_path, orig_ids):
 
 def prediction(config, experiment_folder, id2audio_repr_path, id2gt, ids):
     # pescador: define (finite, batched & parallel) streamer
-    pack = [config, 'overlap_sampling', config['n_frames'], False, DATA_FOLDER]
+    pack = [config, 'overlap_sampling', config['xInput'], False, DATA_FOLDER]
     streams = [pescador.Streamer(data_gen, id, id2audio_repr_path[id], id2gt[id], pack) for id in ids]
     mux_stream = pescador.ChainMux(streams, mode='exhaustive')
     batch_streamer = pescador.Streamer(pescador.buffer_stream, mux_stream, buffer_size=TEST_BATCH_SIZE, partial=True)
@@ -152,6 +152,11 @@ if __name__ == '__main__':
         if task == 'alterations':
             config['task'] = 'alterations'
             config['alteration'] = alteration
+
+        if 'melspectrogram' in config['audio_rep']['type']:
+            config['xInput'] = config['n_frames']
+        elif config['audio_rep']['type'] == 'embeddings':
+            config['xInput'] = 1
 
         # load ground truth
         print('groundtruth file: {}'.format(FILE_GROUND_TRUTH_TEST))
