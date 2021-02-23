@@ -12,7 +12,6 @@ import pescador
 
 import shared
 import classification_heads
-from feature_functions import set_lowlevel_task
 
 config_file = Namespace(**yaml.load(open('config_file.yaml'), Loader=yaml.SafeLoader))
 
@@ -45,20 +44,11 @@ def model_and_cost(config, is_train):
             import models
             y = models.model_number(x, is_train, config)
 
-        if config['mode'] == 'regular':
-            y= classification_heads.regular(y, config)
-        elif config['mode'] == 'adversarial_type_a':
-            y, d, d_ = classification_heads.adversarial_type_a(y, config)
-        elif config['mode'] == 'adversarial' or config['mode'] == 'adversarial_type_b':
-            y, d, d_ = classification_heads.adversarial_type_b(y, config)
-        else:
-            raise Exception('Training mode "{}" not implemented'.format(config['mode']))
+        y = classification_heads.regular(y, config)
 
         normalized_y = tf.nn.softmax(y)
         print(normalized_y.get_shape())
 
-        if 'adversarial' in config['mode']:
-            normalized_d = tf.nn.sigmoid(d)
 
     print('Number of parameters of the model: ' + str(shared.count_params(tf.trainable_variables()))+'\n')
 
@@ -72,25 +62,12 @@ def model_and_cost(config, is_train):
             cost = cost + config['weight_decay'] * lossL2
             print('L2 norm, weight decay!')
 
-        # add discriminator loss component
-        if 'adversarial' in config['mode']:
-            t_cost = cost
-            d_cost = tf.losses.sigmoid_cross_entropy(d_, d)
-
-            cost = t_cost + d_cost
-
-            acc_task = tf.metrics.accuracy(y_, tf.round(normalized_y))
-            acc_discriminator = tf.metrics.accuracy(d_, tf.round(normalized_d))
-
     # print all trainable variables, for debugging
     model_vars = [v for v in tf.global_variables()]
     for variables in tf.trainable_variables():
         print(variables)
 
-    if 'adversarial' in config['mode']:
-        return [x, y_, is_train, y, normalized_y, (cost, t_cost, d_cost, acc_task, acc_discriminator), d_, model_vars]
-    else:
-        return [x, y_, is_train, y, normalized_y, cost, model_vars]
+    return [x, y_, is_train, y, normalized_y, cost, model_vars]
 
 
 
@@ -133,22 +110,8 @@ if __name__ == '__main__':
         config['yInput'] = config['audio_rep']['n_embeddings']
 
     # get the data loader
-    if 'adversarial' in config['mode']:
-        print('Loading data generator for adversarial training targeting {}'.format(config['discriminator_target']))
-        from data_loaders import data_gen_discriminator as data_gen
-    elif config['mode'] == 'regular':
-        print('Loading data generator for regular training')
-        from data_loaders import data_gen_standard as data_gen
-    else:
-        raise Exception('Training mode "{}" not implemented'.format(config['mode']))
-
-    # get the training task
-    if config['task'] == 'labels':
-        pass
-    elif config['task'] == 'lowlevel_descriptors':
-        set_lowlevel_task(config)
-    else:
-        raise Exception('Training task "{}" not implemented'.format(config['task']))
+    print('Loading data generator for regular training')
+    from data_loaders import data_gen_standard as data_gen
 
     # load audio representation paths
     file_index = config_file.DATA_FOLDER + 'index_repr.tsv'
@@ -178,11 +141,7 @@ if __name__ == '__main__':
     print('\nConfig file saved: ' + str(config))
 
     # tensorflow: define model and cost
-    if 'adversarial' in config['mode']:
-        [x, y_, is_train, y, normalized_y, costs, d_, model_vars] = tf_define_model_and_cost(config)
-        cost, t_cost, d_cost, acc_task, acc_discriminator = costs
-    else:
-        [x, y_, is_train, y, normalized_y, cost, model_vars] = tf_define_model_and_cost(config)
+    [x, y_, is_train, y, normalized_y, cost, model_vars] = tf_define_model_and_cost(config)
 
     # tensorflow: define optimizer
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS) # needed for batchnorm
@@ -249,15 +208,7 @@ if __name__ == '__main__':
     saver = tf.train.Saver()
 
     if config['load_model'] is not None: # restore model weights from previously saved model
-        if config['mode'] == 'adversarial_type_a':
-            # Skip the layers we are going to train: 2 tasks X 2 layers X (kernel + bias) = 8
-            saver = tf.train.Saver(var_list=model_vars[:-8])
-        elif config['mode'] == 'adversarial' or config['mode'] == 'adversarial_type_b':
-            # Skip the layers we are going to train: 1 task X 3 layers X (kernel + bias) = 6
-            saver = tf.train.Saver(var_list=model_vars[:-6])
-        else:
-            # Skip the layers we are going to train: 1 task X 2 layers X (kernel + bias) = 4
-            saver = tf.train.Saver(var_list=model_vars[:-4])
+        saver = tf.train.Saver(var_list=model_vars[:-4])
         saver.restore(sess, config['load_model'])  # end with /!
         print('Pre-trained model loaded!')
 
@@ -269,10 +220,7 @@ if __name__ == '__main__':
 
     # writing headers of the train_log.tsv
     fy = open(model_folder + 'train_log.tsv', 'a')
-    if config['mode'] == 'regular':
-        fy.write('Epoch\ttrain_cost\tval_cost\tepoch_time\tlearing_rate\n')
-    elif 'adversarial'in config['mode']:
-        fy.write('Epoch\ttrain_cost\ttrain_t_cost\ttrain_d_cost\tval_cost\tval_t_cost\tval_d_cost\tepoch_time\tlearing_rate\n')
+    fy.write('Epoch\ttrain_cost\tval_cost\tepoch_time\tlearing_rate\n')
 
     fy.close()
 
@@ -287,165 +235,59 @@ if __name__ == '__main__':
     tmp_learning_rate = config['learning_rate']
     print('Training started..')
 
-    if config['mode'] == 'regular':
-        for i in range(config['epochs']):
-            # training: do not train first epoch, to see random weights behaviour
-            i, train_batch_streamer, sess, train_step, cost
-            start_time = time.time()
-            array_train_cost = []
-            if i != 0:
-                for train_batch in train_batch_streamer:
-                    tf_start = time.time()
-                    _, train_cost = sess.run([train_step, cost],
-                                              feed_dict={x: train_batch['X'], y_: train_batch['Y'], lr: tmp_learning_rate, is_train: True})
-                    array_train_cost.append(train_cost)
+    for i in range(config['epochs']):
+        # training: do not train first epoch, to see random weights behaviour
+        i, train_batch_streamer, sess, train_step, cost
+        start_time = time.time()
+        array_train_cost = []
+        if i != 0:
+            for train_batch in train_batch_streamer:
+                tf_start = time.time()
+                _, train_cost = sess.run([train_step, cost],
+                                            feed_dict={x: train_batch['X'], y_: train_batch['Y'], lr: tmp_learning_rate, is_train: True})
+                array_train_cost.append(train_cost)
 
-            # validation
-            array_val_cost = []
-            for val_batch in val_batch_streamer:
-                val_cost = sess.run([cost],
-                                    feed_dict={x: val_batch['X'], y_: val_batch['Y'], is_train: False})
-                array_val_cost.append(val_cost)
+        # validation
+        array_val_cost = []
+        for val_batch in val_batch_streamer:
+            val_cost = sess.run([cost],
+                                feed_dict={x: val_batch['X'], y_: val_batch['Y'], is_train: False})
+            array_val_cost.append(val_cost)
 
-            # Keep track of average loss of the epoch
-            train_cost = np.mean(array_train_cost)
+        # Keep track of average loss of the epoch
+        train_cost = np.mean(array_train_cost)
 
-            val_cost = np.mean(array_val_cost)
-            epoch_time = time.time() - start_time
-            fy = open(model_folder + 'train_log.tsv', 'a')
-            fy.write('%g\t%g\t%g\t%gs\t%g\n' % (i+1, train_cost, val_cost, epoch_time, tmp_learning_rate))
-            fy.close()
+        val_cost = np.mean(array_val_cost)
+        epoch_time = time.time() - start_time
+        fy = open(model_folder + 'train_log.tsv', 'a')
+        fy.write('%g\t%g\t%g\t%gs\t%g\n' % (i+1, train_cost, val_cost, epoch_time, tmp_learning_rate))
+        fy.close()
 
-            # Decrease the learning rate after not improving in the validation set
-            if config['patience'] and k_patience >= config['patience']:
-                print('Changing learning rate!')
-                tmp_learning_rate = tmp_learning_rate / 2
-                print(tmp_learning_rate)
-                k_patience = 0
+        # Decrease the learning rate after not improving in the validation set
+        if config['patience'] and k_patience >= config['patience']:
+            print('Changing learning rate!')
+            tmp_learning_rate = tmp_learning_rate / 2
+            print(tmp_learning_rate)
+            k_patience = 0
 
-            # Early stopping: keep the best model in validation set
-            if val_cost >= cost_best_model:
-                k_patience += 1
-                print('Epoch %d, train cost %g, '
-                        'val cost %g, '
-                        'epoch-time %gs, lr %g, time-stamp %s' %
-                        (i+1, train_cost, val_cost, epoch_time, tmp_learning_rate,
-                        str(time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime()))))
+        # Early stopping: keep the best model in validation set
+        if val_cost >= cost_best_model:
+            k_patience += 1
+            print('Epoch %d, train cost %g, '
+                    'val cost %g, '
+                    'epoch-time %gs, lr %g, time-stamp %s' %
+                    (i+1, train_cost, val_cost, epoch_time, tmp_learning_rate,
+                    str(time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime()))))
 
-            else:
-                # save model weights to disk
-                save_path = saver.save(sess, model_folder)
-                print('Epoch %d, train cost %g, '
-                        'val cost %g, '
-                        'epoch-time %gs, lr %g, time-stamp %s - [BEST MODEL]'
-                        ' saved in: %s' %
-                        (i+1, train_cost, val_cost, epoch_time,tmp_learning_rate,
-                        str(time.strftime('%Y-%m-%d %H:%M:%S',time.gmtime())), save_path))
-                cost_best_model = val_cost
-
-    elif 'adversarial' in config['mode']:
-        for i in range(config['epochs']):
-            # training: do not train first epoch, to see random weights behaviour
-            i, train_batch_streamer, sess, train_step, cost, t_cost, d_cost
-            start_time = time.time()
-
-            array_train_cost, array_train_t_cost, array_train_d_cost = [], [], []
-            array_train_t_acc, array_train_d_acc = [], []
-            if i != 0:
-                for train_batch in train_batch_streamer:
-                    tf_start = time.time()
-                    (_, train_cost, train_t_cost, train_d_cost,
-                     train_t_acc, train_d_acc) = sess.run([train_step, cost, t_cost, d_cost,
-                                                            acc_task, acc_discriminator],
-                                                           feed_dict={x: train_batch['X'],
-                                                                      y_: train_batch['Y'],
-                                                                      d_: train_batch['D'],
-                                                                      lr: tmp_learning_rate,
-                                                                      is_train: True})
-                    array_train_cost.append(train_cost)
-                    array_train_t_cost.append(train_t_cost)
-                    array_train_d_cost.append(train_d_cost)
-                    array_train_t_acc.append(train_t_acc)
-                    array_train_d_acc.append(train_d_acc)
-
-            # validation
-            array_val_cost, array_val_t_cost, array_val_d_cost = [], [], []
-            array_val_t_acc, array_val_d_acc = [], []
-            for val_batch in val_batch_streamer:
-                (val_cost, val_t_cost, val_d_cost,
-                 val_t_acc, val_d_acc) = sess.run([cost, t_cost, d_cost,
-                                                   acc_task, acc_discriminator],
-                                                  feed_dict={x: val_batch['X'],
-                                                             y_: val_batch['Y'],
-                                                             d_: val_batch['D'],
-                                                             is_train: False})
-                array_val_cost.append(val_cost)
-                array_val_t_cost.append(val_t_cost)
-                array_val_d_cost.append(val_d_cost)
-                array_val_t_acc.append(val_t_acc)
-                array_val_d_acc.append(val_d_acc)
-
-            # Keep track of average loss of the epoch
-            train_cost = np.mean(array_train_cost)
-            train_t_cost = np.mean(array_train_t_cost)
-            train_d_cost = np.mean(array_train_d_cost)
-
-            val_cost = np.mean(array_val_cost)
-            val_t_cost = np.mean(array_val_t_cost)
-            val_d_cost = np.mean(array_val_d_cost)
-
-            # Average accuracies
-            train_t_acc = np.mean(array_train_t_acc)
-            train_d_acc = np.mean(array_train_d_acc)
-            val_t_acc = np.mean(array_val_t_acc)
-            val_d_acc = np.mean(array_val_d_acc)
-
-            epoch_time = time.time() - start_time
-
-            write_summary(train_cost, 'loss_total', i, train_file_writer)
-            write_summary(train_t_cost, 'loss_task', i, train_file_writer)
-            write_summary(train_d_cost, 'loss_discriminator', i, train_file_writer)
-            write_summary(train_t_acc, 'acc_task', i, train_file_writer)
-            write_summary(train_d_acc, 'acc_discriminator', i, train_file_writer)
-            train_file_writer.flush()
-
-            write_summary(val_cost, 'loss_total', i, val_file_writer)
-            write_summary(val_t_cost, 'loss_task', i, val_file_writer)
-            write_summary(val_d_cost, 'loss_discriminator', i, val_file_writer)
-            write_summary(val_t_acc, 'acc_task', i, val_file_writer)
-            write_summary(val_d_acc, 'acc_discriminator', i, val_file_writer)
-            val_file_writer.flush()
-
-            fy = open(model_folder + 'train_log.tsv', 'a')
-            fy.write('%d\t%g\t%g\t%g\t%g\t%g\t%g\t%gs\t%g\n' % (i+1, train_cost, train_t_cost, train_d_cost, val_cost, val_t_cost, val_d_cost, epoch_time, tmp_learning_rate))
-            fy.close()
-
-            # Decrease the learning rate after not improving in the validation set
-            if config['patience'] and k_patience >= config['patience']:
-                print('Changing learning rate!')
-                tmp_learning_rate = tmp_learning_rate / 2
-                print(tmp_learning_rate)
-                k_patience = 0
-
-            # Early stopping: keep the best model in validation set
-            if val_t_cost >= cost_best_model:
-                k_patience += 1
-                print('Epoch %d, train cost %g, train task cost %g, train discriminator cost %g, '
-                        'val cost %g, val task cost %g, val discriminator cost %g,'
-                        'epoch-time %gs, lr %g, time-stamp %s' %
-                        (i+1, train_cost, train_t_cost, train_d_cost, val_cost, val_t_cost, val_d_cost, epoch_time, tmp_learning_rate,
-                        str(time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime()))))
-
-            else:
-                # save model weights to disk
-                save_path = saver.save(sess, model_folder)
-                print('Epoch %d, train cost %g, train task cost %g, train discriminator cost %g, '
-                        'val cost %g, val task cost %g, val discriminator cost %g,'
-                        'epoch-time %gs, lr %g, time-stamp %s - [BEST MODEL]'
-                        ' saved in: %s' %
-                        (i+1, train_cost, train_t_cost, train_d_cost, val_cost, val_t_cost, val_d_cost, epoch_time,tmp_learning_rate,
-                        str(time.strftime('%Y-%m-%d %H:%M:%S',time.gmtime())), save_path))
-                cost_best_model = val_t_cost
-
+        else:
+            # save model weights to disk
+            save_path = saver.save(sess, model_folder)
+            print('Epoch %d, train cost %g, '
+                    'val cost %g, '
+                    'epoch-time %gs, lr %g, time-stamp %s - [BEST MODEL]'
+                    ' saved in: %s' %
+                    (i+1, train_cost, val_cost, epoch_time,tmp_learning_rate,
+                    str(time.strftime('%Y-%m-%d %H:%M:%S',time.gmtime())), save_path))
+            cost_best_model = val_cost
 
     print('\nEVALUATE EXPERIMENT -> '+ str(experiment_id))
