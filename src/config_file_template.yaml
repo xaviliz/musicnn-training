@@ -38,6 +38,13 @@ config_preprocess:
     resample_sr: 44100
     n_embeddings: 1280
     type: embeddings
+  effnet_b0:
+    hop: 256
+    n_fft: 512
+    n_mels: 96
+    resample_sr: 16000
+    n_embeddings: 200
+    type: embeddings
 
 config_train:
   audio_representation_folder: %(audio_representation_folder)s

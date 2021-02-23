@@ -13,6 +13,7 @@ from feature_melspectrogram_vggish import feature_melspectrogram_vggish
 from feature_ol3 import feature_ol3
 from feature_spleeter import feature_spleeter
 from feature_tempocnn import feature_tempocnn
+from feature_effnet_b0 import feature_effnet_b0
 
 config_file = Namespace(**yaml.load(open('config_file.yaml'), Loader=yaml.SafeLoader))
 
@@ -40,6 +41,8 @@ def compute_audio_repr(audio_file, audio_repr_file, force=False):
         audio_repr = feature_spleeter(audio_file)
     elif config['feature_name'] == 'tempocnn':
         audio_repr = feature_tempocnn(audio_file)
+    elif config['feature_name'] == 'effnet_b0':
+        audio_repr = feature_effnet_b0(audio_file)
     else:
         raise Exception('Feature {} not implemented.'.format(config['type']))
 
