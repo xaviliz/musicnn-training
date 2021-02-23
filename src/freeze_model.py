@@ -2,9 +2,10 @@ import argparse
 import os
 import json
 import train
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow.core.framework import graph_pb2
 from tensorflow.core.framework import node_def_pb2
+tf.disable_v2_behavior()
 
 def strip(input_graph, drop_scope, input_before, output_after, pl_name):
     input_nodes = input_graph.node
