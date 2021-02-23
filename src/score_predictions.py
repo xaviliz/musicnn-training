@@ -40,31 +40,31 @@ def score_predictions(results_file, predictions_file):
     predictions_ids = set(predictions.keys())
 
     # check if there are missing predictions and update ids
-    missing_predictions = groundtruth_ids.difference(predictions_ids)
-    if missing_predictions:
-        print('missing predictions for ids: {}'.format(missing_predictions))
-        ids = list(predictions_ids)
+    missing_ids = groundtruth_ids.symmetric_difference(predictions_ids)
+    if missing_ids:
+        print('ids without predictions or groundtruth: {}'.format(missing_ids))
+        ids = list(predictions_ids - missing_ids)
 
     y_true, y_pred = zip(*[(groundtruth[i], predictions[i]) for i in ids])
 
     fold_gt, fold_pred = [], []
     for i, fold in enumerate(folds):
         keys = ([i for i in fold.keys() if i in groundtruth.keys()])
-        fold_pred.append({k: v for k, v in fold.items() if k in keys})
+        fold_pred.append([predictions[k] for k in keys])
         fold_gt.append([groundtruth[k] for k in keys])
 
-    roc_auc, pr_auc, acc, accs, report = get_metrics(y_true, y_pred, fold_gt, folds)
+    roc_auc, pr_auc, acc, accs, report = get_metrics(y_true, y_pred, fold_gt, fold_pred, folds)
 
     store_results(results_file, roc_auc, pr_auc, acc, accs, report)
 
-def get_metrics(y_true, y_pred, fold_gt, folds):
+def get_metrics(y_true, y_pred, fold_gt, fold_pred, folds):
     roc_auc, pr_auc = shared.auc_with_aggergated_predictions(y_true, y_pred)
     acc = shared.compute_accuracy(y_true, y_pred)
 
     accs = []
     for i in range(N_FOLDS):
         y_true_fold = fold_gt[i]
-        y_pred_fold = list(folds[i].values())
+        y_pred_fold = fold_pred[i]
         accs.append(shared.compute_accuracy(y_true_fold, y_pred_fold))
 
     y_true_argmax = [np.argmax(i) for i in y_true]
