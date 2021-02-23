@@ -51,7 +51,6 @@ if __name__ == '__main__':
     for model in models:
         experiment_folder = os.path.join(model_fol, str(model))
         config = json.load(open(os.path.join(experiment_folder, 'config.json')))
-        config['mode'] = 'regular'
 
         # parser architecture:
         if config['model_number'] == 2:

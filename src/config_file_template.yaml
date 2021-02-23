@@ -71,10 +71,4 @@ config_train:
   n_folds: %(n_folds)s
   fold: %(fold)s
   seed: %(seed)s
-  mode : %(mode)s  # regular, adversarial_type_a, adversarial_type_b
-  lambda: %(lambda)s  # lambda for reversal gradient models
-  discriminator_dimensions: 1
-  discriminator_target: dataset
   coupling_layer_units : 100  # units of the first layer after the TL embeddings. 0 to omit a coupling layer
-  task : %(task)s  # labels, lowlevel_descriptors
-  lowlevel_descriptor : loudness

@@ -69,7 +69,6 @@ if __name__ == '__main__':
     for model in models:
         experiment_folder = os.path.join(model_dir, str(model))
         config = json.load(open(os.path.join(experiment_folder, 'config.json')))
-        config['mode'] = 'regular'
 
         if 'melspectrogram' in config['audio_rep']['type']:
             config['xInput'] = config['n_frames']

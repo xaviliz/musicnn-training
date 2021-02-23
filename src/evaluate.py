@@ -124,16 +124,10 @@ if __name__ == '__main__':
     # Use the -l functionality to ensamble models: python arg.py -l 1234 2345 3456 4567
     parser = argparse.ArgumentParser()
     parser.add_argument('-l', '--list', nargs='+', help='List of models to evaluate', required=True)
-    parser.add_argument('-t', '--task', help='evaluation type', choices=['regular', 'alterations'], default='regular')
-    parser.add_argument('-a', '--alteration', help='alteration', choices=['bpm', 'loudness', 'key'])
-    parser.add_argument('-r', '--range', nargs='+', help='range of values to try', type=float)
 
     args = parser.parse_args()
 
     models = args.list
-    task = args.task
-    alteration = args.alteration
-    alteration_range = args.range
 
     # load all audio representation paths
     [audio_repr_paths, id2audio_repr_path] = shared.load_id2path(FILE_INDEX)
@@ -145,14 +139,6 @@ if __name__ == '__main__':
         print('Experiment: ' + str(model))
         print('\n' + str(config))
 
-        # Don't load auxiliary (adversarial) modules for evaluation
-        config['mode'] = 'regular'
-
-        # modify the configuration if required to inform the dataloader
-        if task == 'alterations':
-            config['task'] = 'alterations'
-            config['alteration'] = alteration
-
         if 'melspectrogram' in config['audio_rep']['type']:
             config['xInput'] = config['n_frames']
         elif config['audio_rep']['type'] == 'embeddings':
@@ -161,43 +147,14 @@ if __name__ == '__main__':
         # load ground truth
         print('groundtruth file: {}'.format(FILE_GROUND_TRUTH_TEST))
         ids, id2gt = shared.load_id2gt(FILE_GROUND_TRUTH_TEST)
-
-        if config['task'] == 'lowlevel_descriptors':
-            ids, id2gt = get_lowlevel_descriptors_groundtruth(config, id2audio_repr_path, ids)
-
-
         print('# Test set size: ', len(ids))
 
-        if task == 'regular':
-            print('Performing regular evaluation')
-            y_pred, metrics = prediction(config, experiment_folder, id2audio_repr_path, id2gt, ids)
+        print('Performing regular evaluation')
+        y_pred, metrics = prediction(config, experiment_folder, id2audio_repr_path, id2gt, ids)
 
-            # store experimental results
-            results_file = os.path.join(MODEL_FOLDER, 'results_{}'.format(FOLD))
-            predictions_file = os.path.join(MODEL_FOLDER, 'predictions_{}.json'.format(FOLD))
+        # store experimental results
+        results_file = os.path.join(MODEL_FOLDER, 'results_{}'.format(FOLD))
+        predictions_file = os.path.join(MODEL_FOLDER, 'predictions_{}.json'.format(FOLD))
 
-            store_results(config, results_file, predictions_file, models, ids, y_pred, metrics)
+        store_results(config, results_file, predictions_file, models, ids, y_pred, metrics)
 
-        elif task == 'alterations':
-            print('Performing alterations evaluation')
-
-            for alteration_value in alteration_range:
-                print('Alterating {} to a value of {}'.format(alteration, alteration_value))
-                config['alteration_value'] = alteration_value
-
-                y_pred, metrics = prediction(config, experiment_folder, id2audio_repr_path, id2gt, ids)
-
-                # store experimental results
-                results_file = os.path.join(MODEL_FOLDER,
-                                            'results_{}'.format(alteration),
-                                            '{}_{}'.format(alteration, alteration_value),
-                                            'results_{}'.format(FOLD))
-
-                predictions_file = os.path.join(MODEL_FOLDER,
-                                                'results_{}'.format(alteration),
-                                                '{}_{}'.format(alteration, alteration_value),
-                                                'predictions_{}.json'.format(FOLD))
-
-                store_results(config, results_file, predictions_file, models, ids, y_pred, metrics)
-        else:
-            raise Exception('Evaluation type "{}" is not implemented'.format(task))
