@@ -42,7 +42,7 @@ def score_predictions(results_file, predictions_file):
     # check if there are missing predictions and update ids
     missing_ids = groundtruth_ids.symmetric_difference(predictions_ids)
     if missing_ids:
-        print('missing predictions for ids: {}'.format(missing_ids))
+        print('ids without predictions or groundtruth: {}'.format(missing_ids))
         ids = list(predictions_ids - missing_ids)
 
     y_true, y_pred = zip(*[(groundtruth[i], predictions[i]) for i in ids])
