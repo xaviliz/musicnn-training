@@ -1,15 +1,12 @@
+import json
 import os
-import argparse
-import json
-import shared
-import train
-import numpy as np
-import tensorflow as tf
-from tqdm import tqdm
-import yaml
 from argparse import Namespace
-import json
+
+import numpy as np
+import yaml
 from sklearn.metrics import classification_report
+
+import shared
 
 config_file = Namespace(**yaml.load(open('config_file.yaml')))
 
@@ -111,35 +108,7 @@ def store_results(output_file, roc_auc, pr_auc, acc, accs, report):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-t', '--task', help='evaluation type', choices=['regular', 'alterations'], default='regular')
-    parser.add_argument('-a', '--alteration', help='alteration', choices=['bpm', 'loudness', 'key'])
-    parser.add_argument('-r', '--range', nargs='+', help='range of values to try', type=float)
+    results_file = os.path.join(MODEL_FOLDER, 'results_whole')
+    predictions_file = os.path.join(MODEL_FOLDER, 'predictions')
 
-    args = parser.parse_args()
-
-    task = args.task
-    alteration = args.alteration
-    alteration_range = args.range
-
-    if task == 'regular':
-        results_file = os.path.join(MODEL_FOLDER, 'results_whole')
-        predictions_file = os.path.join(MODEL_FOLDER, 'predictions')
-
-        score_predictions(results_file, predictions_file)
-
-    elif task == 'alterations':
-        for alteration_value in alteration_range:
-            results_file = os.path.join(MODEL_FOLDER,
-                'results_{}'.format(alteration),
-                '{}_{}'.format(alteration, alteration_value),
-                'results_whole')
-
-            predictions_file = os.path.join(MODEL_FOLDER,
-                'results_{}'.format(alteration),
-                '{}_{}'.format(alteration, alteration_value),
-                'predictions')
-
-            score_predictions(results_file, predictions_file)
-    else:
-        raise Exception('score_predictions: task not implemented')
+    score_predictions(results_file, predictions_file)
