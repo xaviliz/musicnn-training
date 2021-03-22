@@ -61,7 +61,8 @@ def prediction(config, experiment_folder, id2audio_repr_path, id2gt, ids):
     metrics = (roc_auc, pr_auc, acc)
     return y_pred, metrics
 
-def store_results(config, results_file, predictions_file, models, ids, y_pred, metrics):
+
+def store_results(results_file, predictions_file, models, ids, y_pred, metrics):
     roc_auc, pr_auc, acc = metrics
 
     results_folder = os.path.dirname(results_file)
@@ -124,5 +125,5 @@ if __name__ == '__main__':
         results_file = os.path.join(MODEL_FOLDER, 'results_{}'.format(FOLD))
         predictions_file = os.path.join(MODEL_FOLDER, 'predictions_{}.json'.format(FOLD))
 
-        store_results(config, results_file, predictions_file, models, ids, y_pred, metrics)
+        store_results(results_file, predictions_file, models, ids, y_pred, metrics)
 
