@@ -55,7 +55,7 @@ def model_and_cost(config, is_train):
     with tf.name_scope('metrics'):
         # if you use softmax_cross_entropy be sure that the output of your model has linear units!
         cost = tf.losses.softmax_cross_entropy(y_, y)
-        if config['weight_decay'] != None:
+        if config['weight_decay'] is not None:
             vars = tf.trainable_variables()
             lossL2 = tf.add_n([ tf.nn.l2_loss(v) for v in vars if 'kernel' or 'weights' in v.name ])
             cost = cost + config['weight_decay'] * lossL2
