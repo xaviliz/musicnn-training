@@ -232,7 +232,6 @@ if __name__ == '__main__':
 
     for i in range(config['epochs']):
         # training: do not train first epoch, to see random weights behaviour
-        i, train_batch_streamer, sess, train_step, cost
         start_time = time.time()
         array_train_cost = []
         if i != 0:
