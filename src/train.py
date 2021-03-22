@@ -195,8 +195,6 @@ if __name__ == '__main__':
     val_batch_streamer = pescador.Streamer(pescador.buffer_stream, val_mux_stream, buffer_size=config['val_batch_size'], partial=True)
     val_batch_streamer = pescador.ZMQStreamer(val_batch_streamer)
 
-    update_on_train = True
-
     train_file_writer = tf.summary.FileWriter(os.path.join(model_folder, 'logs', 'train'), sess.graph)
     val_file_writer = tf.summary.FileWriter(os.path.join(model_folder, 'logs', 'val'), sess.graph)
 
@@ -210,8 +208,6 @@ if __name__ == '__main__':
         saver = tf.train.Saver(var_list=model_vars[:-4])
         saver.restore(sess, config['load_model'])  # end with /!
         print('Pre-trained model loaded!')
-
-        update_on_train = False
 
     # After restoring make it aware of the rest of the variables
     # saver.var_list = model_vars
