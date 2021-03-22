@@ -22,38 +22,6 @@ FOLD = config_file.config_train['fold']
 NUM_CLASSES_DATASET = config_file.config_train['num_classes_dataset']
 
 
-def get_lowlevel_descriptors_groundtruth(config, id2audio_repr_path, orig_ids):
-    print('Changing groundtruth to "{}" values'.format(config['lowlevel_descriptor']))
-    global NUM_CLASSES_DATASET
-
-    if 'loudness' in config['lowlevel_descriptor']:
-        from feature_functions import get_loudness as gt_extractor
-        NUM_CLASSES_DATASET = 1
-    elif 'bpm' in config['lowlevel_descriptor']:
-        from feature_functions import get_bpm as gt_extractor
-        NUM_CLASSES_DATASET = 1
-    elif 'scale' in config['lowlevel_descriptor']:
-        from feature_functions import get_mode as gt_extractor
-        NUM_CLASSES_DATASET = 1
-    elif 'key' in config['lowlevel_descriptor']:
-        from feature_functions import get_key as gt_extractor
-        NUM_CLASSES_DATASET = 12
-
-    data_folder = os.path.dirname(config['gt_test'])
-
-    ids = []
-    id2gt = dict()
-
-    for oid in orig_ids:
-        try:
-            id2gt[oid] = gt_extractor(data_folder,
-                                      os.path.join(data_folder, id2audio_repr_path[oid]))
-            ids.append(oid)
-        except:
-            print('{} failed'.format(oid))
-
-    return ids, id2gt
-
 def prediction(config, experiment_folder, id2audio_repr_path, id2gt, ids):
     # pescador: define (finite, batched & parallel) streamer
     pack = [config, 'overlap_sampling', config['xInput'], False, DATA_FOLDER]
