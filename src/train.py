@@ -17,7 +17,6 @@ config_file = Namespace(**yaml.load(open('config_file.yaml'), Loader=yaml.SafeLo
 
 def write_summary(value, tag, step, writer):
     # Create a new Summary object with your measure
-    summary = tf.Summary()
     summary = tf.Summary(value=[
         tf.Summary.Value(tag=tag, simple_value=value),
     ])
