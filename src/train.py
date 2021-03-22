@@ -202,7 +202,6 @@ if __name__ == '__main__':
     sess.run(tf.global_variables_initializer())
     # Required by the accuracy metrics
     sess.run(tf.local_variables_initializer())
-    saver = tf.train.Saver()
 
     if config['load_model'] is not None: # restore model weights from previously saved model
         saver = tf.train.Saver(var_list=model_vars[:-4])
