@@ -17,7 +17,6 @@ config_file = Namespace(**yaml.load(open('config_file.yaml'), Loader=yaml.SafeLo
 
 def write_summary(value, tag, step, writer):
     # Create a new Summary object with your measure
-    summary = tf.Summary()
     summary = tf.Summary(value=[
         tf.Summary.Value(tag=tag, simple_value=value),
     ])
@@ -56,7 +55,7 @@ def model_and_cost(config, is_train):
     with tf.name_scope('metrics'):
         # if you use softmax_cross_entropy be sure that the output of your model has linear units!
         cost = tf.losses.softmax_cross_entropy(y_, y)
-        if config['weight_decay'] != None:
+        if config['weight_decay'] is not None:
             vars = tf.trainable_variables()
             lossL2 = tf.add_n([ tf.nn.l2_loss(v) for v in vars if 'kernel' or 'weights' in v.name ])
             cost = cost + config['weight_decay'] * lossL2
@@ -196,8 +195,6 @@ if __name__ == '__main__':
     val_batch_streamer = pescador.Streamer(pescador.buffer_stream, val_mux_stream, buffer_size=config['val_batch_size'], partial=True)
     val_batch_streamer = pescador.ZMQStreamer(val_batch_streamer)
 
-    update_on_train = True
-
     train_file_writer = tf.summary.FileWriter(os.path.join(model_folder, 'logs', 'train'), sess.graph)
     val_file_writer = tf.summary.FileWriter(os.path.join(model_folder, 'logs', 'val'), sess.graph)
 
@@ -205,14 +202,11 @@ if __name__ == '__main__':
     sess.run(tf.global_variables_initializer())
     # Required by the accuracy metrics
     sess.run(tf.local_variables_initializer())
-    saver = tf.train.Saver()
 
     if config['load_model'] is not None: # restore model weights from previously saved model
         saver = tf.train.Saver(var_list=model_vars[:-4])
         saver.restore(sess, config['load_model'])  # end with /!
         print('Pre-trained model loaded!')
-
-        update_on_train = False
 
     # After restoring make it aware of the rest of the variables
     # saver.var_list = model_vars
@@ -237,7 +231,6 @@ if __name__ == '__main__':
 
     for i in range(config['epochs']):
         # training: do not train first epoch, to see random weights behaviour
-        i, train_batch_streamer, sess, train_step, cost
         start_time = time.time()
         array_train_cost = []
         if i != 0:

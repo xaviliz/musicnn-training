@@ -2,7 +2,7 @@ import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
 
 import tf_slim as slim
-from flip_gradient import flip_gradient
+
 
 # from musicnn import configuration as config
 

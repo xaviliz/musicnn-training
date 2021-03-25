@@ -22,38 +22,6 @@ FOLD = config_file.config_train['fold']
 NUM_CLASSES_DATASET = config_file.config_train['num_classes_dataset']
 
 
-def get_lowlevel_descriptors_groundtruth(config, id2audio_repr_path, orig_ids):
-    print('Changing groundtruth to "{}" values'.format(config['lowlevel_descriptor']))
-    global NUM_CLASSES_DATASET
-
-    if 'loudness' in config['lowlevel_descriptor']:
-        from feature_functions import get_loudness as gt_extractor
-        NUM_CLASSES_DATASET = 1
-    elif 'bpm' in config['lowlevel_descriptor']:
-        from feature_functions import get_bpm as gt_extractor
-        NUM_CLASSES_DATASET = 1
-    elif 'scale' in config['lowlevel_descriptor']:
-        from feature_functions import get_mode as gt_extractor
-        NUM_CLASSES_DATASET = 1
-    elif 'key' in config['lowlevel_descriptor']:
-        from feature_functions import get_key as gt_extractor
-        NUM_CLASSES_DATASET = 12
-
-    data_folder = os.path.dirname(config['gt_test'])
-
-    ids = []
-    id2gt = dict()
-
-    for oid in orig_ids:
-        try:
-            id2gt[oid] = gt_extractor(data_folder,
-                                      os.path.join(data_folder, id2audio_repr_path[oid]))
-            ids.append(oid)
-        except:
-            print('{} failed'.format(oid))
-
-    return ids, id2gt
-
 def prediction(config, experiment_folder, id2audio_repr_path, id2gt, ids):
     # pescador: define (finite, batched & parallel) streamer
     pack = [config, 'overlap_sampling', config['xInput'], False, DATA_FOLDER]
@@ -63,8 +31,8 @@ def prediction(config, experiment_folder, id2audio_repr_path, id2gt, ids):
     batch_streamer = pescador.ZMQStreamer(batch_streamer)
 
     # tensorflow: define model and cost
-    fuckin_graph = tf.Graph()
-    with fuckin_graph.as_default():
+    tf_graph = tf.Graph()
+    with tf_graph.as_default():
         sess = tf.Session()
         [x, y_, is_train, y, normalized_y, cost, _] = train.tf_define_model_and_cost(config)
         sess.run(tf.global_variables_initializer())
@@ -74,7 +42,7 @@ def prediction(config, experiment_folder, id2audio_repr_path, id2gt, ids):
         pred_array, id_array = np.empty([0, NUM_CLASSES_DATASET]), np.empty(0)
         for batch in tqdm(batch_streamer):
             pred, _ = sess.run([normalized_y, cost], feed_dict={x: batch['X'], y_: batch['Y'], is_train: False})
-            # make shure our predictions have are a np
+            # make sure our predictions are in a numpy
             # array with the proper shape
             pred = np.array(pred).reshape(-1, NUM_CLASSES_DATASET)
             pred_array = np.vstack([pred_array, pred])
@@ -93,7 +61,8 @@ def prediction(config, experiment_folder, id2audio_repr_path, id2gt, ids):
     metrics = (roc_auc, pr_auc, acc)
     return y_pred, metrics
 
-def store_results(config, results_file, predictions_file, models, ids, y_pred, metrics):
+
+def store_results(results_file, predictions_file, models, ids, y_pred, metrics):
     roc_auc, pr_auc, acc = metrics
 
     results_folder = os.path.dirname(results_file)
@@ -121,7 +90,7 @@ def store_results(config, results_file, predictions_file, models, ids, y_pred, m
 
 if __name__ == '__main__':
     # which experiment we want to evaluate?
-    # Use the -l functionality to ensamble models: python arg.py -l 1234 2345 3456 4567
+    # Use the -l functionality to ensemble models: python arg.py -l 1234 2345 3456 4567
     parser = argparse.ArgumentParser()
     parser.add_argument('-l', '--list', nargs='+', help='List of models to evaluate', required=True)
 
@@ -156,5 +125,5 @@ if __name__ == '__main__':
         results_file = os.path.join(MODEL_FOLDER, 'results_{}'.format(FOLD))
         predictions_file = os.path.join(MODEL_FOLDER, 'predictions_{}.json'.format(FOLD))
 
-        store_results(config, results_file, predictions_file, models, ids, y_pred, metrics)
+        store_results(results_file, predictions_file, models, ids, y_pred, metrics)
 
