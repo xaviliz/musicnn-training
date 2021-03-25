@@ -1,9 +1,7 @@
 import argparse
-from argparse import Namespace
 import json
-import os
+from pathlib import Path
 import time
-import yaml
 
 import numpy as np
 import tensorflow.compat.v1 as tf
@@ -11,9 +9,10 @@ tf.disable_v2_behavior()
 import pescador
 
 import shared
+import data_loaders
+import models
 import classification_heads
 
-config_file = Namespace(**yaml.load(open('config_file.yaml'), Loader=yaml.SafeLoader))
 
 def write_summary(value, tag, step, writer):
     # Create a new Summary object with your measure
@@ -24,10 +23,10 @@ def write_summary(value, tag, step, writer):
     writer.add_summary(summary, step)
 
 def tf_define_model_and_cost(config):
-        return model_and_cost(config, tf.placeholder(tf.bool))
+    return model_and_cost(config, tf.placeholder(tf.bool))
 
 def tf_define_model_and_cost_freeze(config):
-        return model_and_cost(config, False)
+    return model_and_cost(config, False)
 
 def model_and_cost(config, is_train):
     # tensorflow: define the model
@@ -48,8 +47,7 @@ def model_and_cost(config, is_train):
         normalized_y = tf.nn.softmax(y)
         print(normalized_y.get_shape())
 
-
-    print('Number of parameters of the model: ' + str(shared.count_params(tf.trainable_variables()))+'\n')
+    print('Number of parameters of the model: ' + str(shared.count_params(tf.trainable_variables())) + '\n')
 
     # tensorflow: define cost function
     with tf.name_scope('metrics'):
@@ -57,7 +55,7 @@ def model_and_cost(config, is_train):
         cost = tf.losses.softmax_cross_entropy(y_, y)
         if config['weight_decay'] is not None:
             vars = tf.trainable_variables()
-            lossL2 = tf.add_n([ tf.nn.l2_loss(v) for v in vars if 'kernel' or 'weights' in v.name ])
+            lossL2 = tf.add_n([tf.nn.l2_loss(v) for v in vars if 'kernel' or 'weights' in v.name])
             cost = cost + config['weight_decay'] * lossL2
             print('L2 norm, weight decay!')
 
@@ -69,51 +67,34 @@ def model_and_cost(config, is_train):
     return [x, y_, is_train, y, normalized_y, cost, model_vars]
 
 
-
 if __name__ == '__main__':
     # load config parameters defined in 'config_file.py'
     parser = argparse.ArgumentParser()
+    parser.add_argument('config_file', help='configuration file')
     parser.add_argument('-s', '--single_batch', action='store_true', help='iterate over a single batch')
     parser.add_argument('-n', '--number_samples', type=int, help='iterate over a just n random samples')
     args = parser.parse_args()
-    config = config_file.config_train
+    config_file = args.config_file
     single_batch = args.single_batch
     number_samples = args.number_samples
 
+    config = json.load(open(config_file, "r"))
+    exp_dir = Path(config['exp_dir'])
+    data_dir = Path(config['data_dir'])
+
+    # for now on use the subset of parameters for training
+    config = config['config_train']
+
     np.random.seed(seed=config['seed'])
 
-    # load config parameters used in 'preprocess_essentia.py'
-    config_json = os.path.join(config['audio_representation_folder'], 'config.json')
-    with open(config_json, "r") as f:
-        params = json.load(f)
-    config['audio_rep'] = params
-
-    # audioset features are already compressed
-    if config['model_number'] == 20:
-        print('overwritting spectrogram configuration for the vggish-audioset model')
-
-        config['pre_processing'] = ''
-        config['n_frames'] = 96
-        config['audio_rep']['n_mels'] = 64
-
-    # set patch parameters
-    if config['audio_rep']['type'] == 'waveform':
-        raise ValueError('Waveform-based training is not implemented')
-
-    elif 'melspectrogram' in config['audio_rep']['type']:
-        config['xInput'] = config['n_frames']
-        config['yInput'] = config['audio_rep']['n_mels']
-
-    elif config['audio_rep']['type'] == 'embeddings':
-        config['xInput'] = 1
-        config['yInput'] = config['audio_rep']['n_embeddings']
+    config['xInput'] = 1
+    config['yInput'] = sum([i['n_embeddings'] for i in config['feature_params']])
 
     # get the data loader
     print('Loading data generator for regular training')
-    from data_loaders import data_gen_standard as data_gen
 
     # load audio representation paths
-    file_index = config_file.DATA_FOLDER + 'index_repr.tsv'
+    file_index = data_dir / 'index_repr.tsv'
     [audio_repr_paths, id2audio_repr_path] = shared.load_id2path(file_index)
 
     # load training data
@@ -132,18 +113,18 @@ if __name__ == '__main__':
     print('# Classes:', config['classes_vector'])
 
     # save experimental settings
-    experiment_id = str(shared.get_epoch_time()) + config['audio_rep']['type']
-    model_folder = config_file.MODEL_FOLDER + 'experiments/' + str(experiment_id) + '/'
-    if not os.path.exists(model_folder):
-        os.makedirs(model_folder)
-    json.dump(config, open(model_folder + 'config.json', 'w'))
+    experiment_id = str(shared.get_epoch_time()) + config['feature_params'][0]['type']
+    exp_dir_fold = exp_dir / 'experiments' / experiment_id
+    exp_dir_fold.mkdir(parents=True, exist_ok=True)
+
+    json.dump(config, open(exp_dir_fold / 'config.json', 'w'))
     print('\nConfig file saved: ' + str(config))
 
     # tensorflow: define model and cost
     [x, y_, is_train, y, normalized_y, cost, model_vars] = tf_define_model_and_cost(config)
 
     # tensorflow: define optimizer
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS) # needed for batchnorm
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)  # needed for batchnorm
     with tf.control_dependencies(update_ops):
         lr = tf.placeholder(tf.float32)
         if config['optimizer'] == 'SGD_clip':
@@ -179,47 +160,55 @@ if __name__ == '__main__':
         config['ids_val'] = ids_val
 
         # Re-dump config with ids
-        json.dump(config, open(model_folder + 'config.json', 'w'))
+        json.dump(config, open(exp_dir_fold + 'config.json', 'w'))
+
+    if len(config['feature_types']) > 1:
+        data_gen = data_loaders.data_gen_multi_feat
+    else:
+        data_gen = data_loaders.data_gen_standard
 
     # pescador train: define streamer
-    train_pack = [config, config['train_sampling'], config['param_train_sampling'], False, config_file.DATA_FOLDER]
-    train_streams = [pescador.Streamer(data_gen, id, id2audio_repr_path[id], id2gt_train[id], train_pack) for id in ids_train]
-    train_mux_stream = pescador.StochasticMux(train_streams, n_active=config['batch_size']*2, rate=None, mode='exhaustive')
-    train_batch_streamer = pescador.Streamer(pescador.buffer_stream, train_mux_stream, buffer_size=config['batch_size'], partial=True)
+    train_pack = [config, config['train_sampling'], config['param_train_sampling']]
+    train_streams = [pescador.Streamer(
+        data_gen, id, id2audio_repr_path[id], id2gt_train[id], train_pack) for id in ids_train]
+    train_mux_stream = pescador.StochasticMux(
+        train_streams, n_active=config['batch_size'] * 2, rate=None, mode='exhaustive')
+    train_batch_streamer = pescador.Streamer(
+        pescador.buffer_stream, train_mux_stream, buffer_size=config['batch_size'], partial=True)
     train_batch_streamer = pescador.ZMQStreamer(train_batch_streamer)
 
     # pescador val: define streamer
-    val_pack = [config, 'overlap_sampling', config['xInput'], False, config_file.DATA_FOLDER]
-    val_streams = [pescador.Streamer(data_gen, id, id2audio_repr_path[id], id2gt_val[id], val_pack) for id in ids_val]
+    val_pack = [config, 'overlap_sampling', config['xInput']]
+    val_streams = [pescador.Streamer(
+        data_gen, id, id2audio_repr_path[id], id2gt_val[id], val_pack) for id in ids_val]
     val_mux_stream = pescador.ChainMux(val_streams, mode='exhaustive')
-    val_batch_streamer = pescador.Streamer(pescador.buffer_stream, val_mux_stream, buffer_size=config['val_batch_size'], partial=True)
+    val_batch_streamer = pescador.Streamer(
+        pescador.buffer_stream, val_mux_stream, buffer_size=config['val_batch_size'], partial=True)
     val_batch_streamer = pescador.ZMQStreamer(val_batch_streamer)
 
-    train_file_writer = tf.summary.FileWriter(os.path.join(model_folder, 'logs', 'train'), sess.graph)
-    val_file_writer = tf.summary.FileWriter(os.path.join(model_folder, 'logs', 'val'), sess.graph)
+    update_on_train = True
+
+    train_file_writer = tf.summary.FileWriter(exp_dir_fold / 'logs' / 'train', sess.graph)
+    val_file_writer = tf.summary.FileWriter(exp_dir_fold / 'logs' / 'val', sess.graph)
 
     # tensorflow: create a session to run the tensorflow graph
     sess.run(tf.global_variables_initializer())
     # Required by the accuracy metrics
     sess.run(tf.local_variables_initializer())
-
-    if config['load_model'] is not None: # restore model weights from previously saved model
-        saver = tf.train.Saver(var_list=model_vars[:-4])
-        saver.restore(sess, config['load_model'])  # end with /!
-        print('Pre-trained model loaded!')
+    saver = tf.train.Saver()
 
     # After restoring make it aware of the rest of the variables
     # saver.var_list = model_vars
     saver = tf.train.Saver()
 
     # writing headers of the train_log.tsv
-    fy = open(model_folder + 'train_log.tsv', 'a')
+    fy = open(exp_dir_fold / 'train_log.tsv', 'a')
     fy.write('Epoch\ttrain_cost\tval_cost\tepoch_time\tlearing_rate\n')
 
     fy.close()
 
     # automate the evaluation process
-    experiment_id_file = os.path.join(config_file.MODEL_FOLDER, 'experiment_id_{}'.format(config['fold']))
+    experiment_id_file = exp_dir / f"experiment_id_{config['fold']}"
     with open(experiment_id_file, 'w') as f:
         f.write(str(experiment_id))
 
@@ -231,20 +220,28 @@ if __name__ == '__main__':
 
     for i in range(config['epochs']):
         # training: do not train first epoch, to see random weights behaviour
+        i, train_batch_streamer, sess, train_step, cost
         start_time = time.time()
         array_train_cost = []
         if i != 0:
             for train_batch in train_batch_streamer:
                 tf_start = time.time()
                 _, train_cost = sess.run([train_step, cost],
-                                            feed_dict={x: train_batch['X'], y_: train_batch['Y'], lr: tmp_learning_rate, is_train: True})
+                                         feed_dict={x: train_batch['X'],
+                                                    y_: train_batch['Y'],
+                                                    lr: tmp_learning_rate,
+                                                    is_train: True}
+                                         )
                 array_train_cost.append(train_cost)
 
         # validation
         array_val_cost = []
         for val_batch in val_batch_streamer:
             val_cost = sess.run([cost],
-                                feed_dict={x: val_batch['X'], y_: val_batch['Y'], is_train: False})
+                                feed_dict={x: val_batch['X'],
+                                           y_: val_batch['Y'],
+                                           is_train: False}
+                                )
             array_val_cost.append(val_cost)
 
         # Keep track of average loss of the epoch
@@ -252,8 +249,8 @@ if __name__ == '__main__':
 
         val_cost = np.mean(array_val_cost)
         epoch_time = time.time() - start_time
-        fy = open(model_folder + 'train_log.tsv', 'a')
-        fy.write('%g\t%g\t%g\t%gs\t%g\n' % (i+1, train_cost, val_cost, epoch_time, tmp_learning_rate))
+        fy = open(exp_dir_fold / 'train_log.tsv', 'a')
+        fy.write('%g\t%g\t%g\t%gs\t%g\n' % (i + 1, train_cost, val_cost, epoch_time, tmp_learning_rate))
         fy.close()
 
         # Decrease the learning rate after not improving in the validation set
@@ -267,20 +264,20 @@ if __name__ == '__main__':
         if val_cost >= cost_best_model:
             k_patience += 1
             print('Epoch %d, train cost %g, '
-                    'val cost %g, '
-                    'epoch-time %gs, lr %g, time-stamp %s' %
-                    (i+1, train_cost, val_cost, epoch_time, tmp_learning_rate,
-                    str(time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime()))))
+                  'val cost %g, '
+                  'epoch-time %gs, lr %g, time-stamp %s' %
+                  (i + 1, train_cost, val_cost, epoch_time, tmp_learning_rate,
+                   str(time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime()))))
 
         else:
             # save model weights to disk
-            save_path = saver.save(sess, model_folder)
+            save_path = saver.save(sess, str(exp_dir_fold) + '/')
             print('Epoch %d, train cost %g, '
-                    'val cost %g, '
-                    'epoch-time %gs, lr %g, time-stamp %s - [BEST MODEL]'
-                    ' saved in: %s' %
-                    (i+1, train_cost, val_cost, epoch_time,tmp_learning_rate,
-                    str(time.strftime('%Y-%m-%d %H:%M:%S',time.gmtime())), save_path))
+                  'val cost %g, '
+                  'epoch-time %gs, lr %g, time-stamp %s - [BEST MODEL]'
+                  ' saved in: %s' %
+                  (i + 1, train_cost, val_cost, epoch_time, tmp_learning_rate,
+                   str(time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())), save_path))
             cost_best_model = val_cost
 
-    print('\nEVALUATE EXPERIMENT -> '+ str(experiment_id))
+    print('\nEVALUATE EXPERIMENT -> ' + str(experiment_id))

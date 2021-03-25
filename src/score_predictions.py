@@ -1,27 +1,29 @@
 import json
 import os
-from argparse import Namespace
+import argparse
+from pathlib import Path
 
 import numpy as np
-import yaml
 from sklearn.metrics import classification_report
 
 import shared
 
-config_file = Namespace(**yaml.load(open('config_file.yaml')))
 
-MODEL_FOLDER = config_file.MODEL_FOLDER
-DATA_FOLDER = config_file.DATA_FOLDER
-DATASET = config_file.DATASET
-N_FOLDS = config_file.config_train['n_folds']
+def score_predictions(args):
+    config = json.load(open(Path(args.config_file), 'r'))
 
+    results_file = Path(config['exp_dir'], 'results_whole')
+    predictions_file = Path(config['exp_dir'], 'predictions')
 
-def score_predictions(results_file, predictions_file):
     ids, folds, predictions, groundtruth = [], [], dict(), dict()
 
+    n_folds = config['config_train']['n_folds']
+    data_dir = Path(config['data_dir'])
+    dataset = config['dataset']
+
     # get fold-wise predictions
-    for i in range(N_FOLDS):
-        groundtruth_file = os.path.join(DATA_FOLDER, 'gt_test_{}.csv'.format(i))
+    for i in range(n_folds):
+        groundtruth_file = data_dir / f"gt_test_{i}.csv"
 
         with open('{}_{}.json'.format(predictions_file, i), 'r') as f:
             fold = json.load(f)
@@ -50,16 +52,18 @@ def score_predictions(results_file, predictions_file):
         fold_pred.append([predictions[k] for k in keys])
         fold_gt.append([groundtruth[k] for k in keys])
 
-    roc_auc, pr_auc, acc, accs, report = get_metrics(y_true, y_pred, fold_gt, fold_pred, folds)
+    roc_auc, pr_auc, acc, accs, report = get_metrics(
+        y_true, y_pred, fold_gt, fold_pred, n_folds)
 
-    store_results(results_file, roc_auc, pr_auc, acc, accs, report)
+    store_results(results_file, roc_auc, pr_auc, acc, accs, report, dataset)
 
-def get_metrics(y_true, y_pred, fold_gt, fold_pred, folds):
+
+def get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds):
     roc_auc, pr_auc = shared.auc_with_aggergated_predictions(y_true, y_pred)
     acc = shared.compute_accuracy(y_true, y_pred)
 
     accs = []
-    for i in range(N_FOLDS):
+    for i in range(n_folds):
         y_true_fold = fold_gt[i]
         y_pred_fold = fold_pred[i]
         accs.append(shared.compute_accuracy(y_true_fold, y_pred_fold))
@@ -71,7 +75,8 @@ def get_metrics(y_true, y_pred, fold_gt, fold_pred, folds):
 
     return roc_auc, pr_auc, acc, accs, report
 
-def store_results(output_file, roc_auc, pr_auc, acc, accs, report):
+
+def store_results(output_file, roc_auc, pr_auc, acc, accs, report, dataset):
     # print experimental results
     print('ROC-AUC: ' + str(roc_auc))
     print('PR-AUC: ' + str(pr_auc))
@@ -92,23 +97,25 @@ def store_results(output_file, roc_auc, pr_auc, acc, accs, report):
     to.write('{}\n'.format(report))
     to.close()
 
-    output_summary = '/'.join(output_file.split('/')[:-2]) + '/results.json'
+    output_summary = output_file.parent.parent / 'results.json'
+
     try:
         with open(output_summary, 'r') as fp:
             data = json.load(fp)
-    except:
+    except Exception:
         data = dict()
 
     with open(output_summary, 'w+') as fp:
-        data[DATASET] = dict()
-        data[DATASET]['mean'] = acc
-        data[DATASET]['std'] = np.std(accs)
+        data[dataset] = dict()
+        data[dataset]['mean'] = acc
+        data[dataset]['std'] = np.std(accs)
 
         json.dump(data, fp, indent=4)
 
 
 if __name__ == '__main__':
-    results_file = os.path.join(MODEL_FOLDER, 'results_whole')
-    predictions_file = os.path.join(MODEL_FOLDER, 'predictions')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('config_file', help='configuration file')
+    args = parser.parse_args()
 
-    score_predictions(results_file, predictions_file)
+    score_predictions(args)
