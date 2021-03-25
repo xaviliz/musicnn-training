@@ -42,7 +42,7 @@ def prediction(config, experiment_folder, id2audio_repr_path, id2gt, ids):
         pred_array, id_array = np.empty([0, NUM_CLASSES_DATASET]), np.empty(0)
         for batch in tqdm(batch_streamer):
             pred, _ = sess.run([normalized_y, cost], feed_dict={x: batch['X'], y_: batch['Y'], is_train: False})
-            # make sure our predictions have are a np
+            # make sure our predictions are in a numpy
             # array with the proper shape
             pred = np.array(pred).reshape(-1, NUM_CLASSES_DATASET)
             pred_array = np.vstack([pred_array, pred])
