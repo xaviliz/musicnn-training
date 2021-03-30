@@ -103,8 +103,6 @@ def data_gen_multi_feat(id, audio_repr_path, gt, pack):
                     offset = random_frame_offset * \
                         config['feature_params'][j]['n_embeddings'] * 2
 
-                    if config['feature_types'][j] == 'yamnet':
-                        offset *= 2
                     audio_repr.append(read_mmap(Path(audio_folder, audio_repr_path),
                                                 config['xInput'],
                                                 config['feature_params'][j]['n_embeddings'],
@@ -118,20 +116,12 @@ def data_gen_multi_feat(id, audio_repr_path, gt, pack):
         elif sampling == 'overlap_sampling':
             audio_repr = []
             for j, audio_folder in enumerate(config['audio_representation_dirs']):
-                if config['feature_types'][j] == 'yamnet':
-                    frame_num_ñapa = frames_num * 2
-                else:
-                    frame_num_ñapa = frames_num
                 embedding = read_mmap(Path(audio_folder, audio_repr_path),
                                       config['xInput'],
                                       config['feature_params'][j]['n_embeddings'],
-                                      frame_num_ñapa,
+                                      frames_num,
                                       compression=None
                                       )
-
-                # ñapa muy temporal!
-                if config['feature_types'][j] == 'yamnet':
-                    embedding = embedding[::2, :]
 
                 audio_repr.append(embedding)
 
