@@ -1,4 +1,5 @@
 import warnings
+from ast import literal_eval
 from datetime import datetime
 
 import numpy as np
@@ -22,8 +23,8 @@ def load_id2gt(gt_file):
     fgt = open(gt_file)
     id2gt = dict()
     for line in fgt.readlines():
-        id, gt = line.strip().split("\t") # id is string
-        id2gt[id] = eval(gt) # gt is array
+        id, gt = line.strip().split("\t")  # id is string
+        id2gt[id] = literal_eval(gt)  # gt is array
         ids.append(id)
     return ids, id2gt
 
