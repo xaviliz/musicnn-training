@@ -5,7 +5,7 @@ name: Python package
 
 on:
   push:
-    branches: [ mtgdb-models ]
+    branches: [ mtgdb-models, compute_auc ]
   pull_request:
     branches: [ mtgdb-models ]
 
