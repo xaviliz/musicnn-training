@@ -55,7 +55,7 @@ def score_predictions(results_file, predictions_file):
     store_results(results_file, roc_auc, pr_auc, acc, accs, report)
 
 def get_metrics(y_true, y_pred, fold_gt, fold_pred, folds):
-    roc_auc, pr_auc = shared.auc_with_aggergated_predictions(y_true, y_pred)
+    roc_auc, pr_auc = shared.compute_auc(y_true, y_pred)
     acc = shared.compute_accuracy(y_true, y_pred)
 
     accs = []

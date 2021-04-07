@@ -18,6 +18,6 @@ def test_auc():
         [1, 0, 0],
         [0, 1, 0],
     ]
-    roc_auc, pr_auc = shared.auc_with_aggergated_predictions(groundtruth, predicted)
+    roc_auc, pr_auc = shared.compute_auc(groundtruth, predicted)
     np.testing.assert_allclose(roc_auc, 0.8611111)
     np.testing.assert_allclose(pr_auc, 0.84444444)
