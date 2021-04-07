@@ -56,7 +56,7 @@ def define_model(x, is_training, config):
         return define_small_vggish_slim(x, is_training, num_classes)
 
     elif model == 'MSD_musicnn_disc':
-        return build_musicnn_disc(x, is_training, config)
+        raise NotImplementedError
 
     else:
         raise ValueError('Model not implemented!')
