@@ -5,9 +5,9 @@ name: Python package
 
 on:
   push:
-    branches: [ * ]
+    branches: [ mtgdb-models ]
   pull_request:
-    branches: [ * ]
+    branches: [ mtgdb-models ]
 
 jobs:
   build:
