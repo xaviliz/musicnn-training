@@ -55,7 +55,7 @@ def prediction(config, experiment_folder, id2audio_repr_path, id2gt, ids):
 
     print('Predictions computed, now evaluating...')
     y_true, y_pred = shared.average_predictions(pred_array, id_array, ids, id2gt)
-    roc_auc, pr_auc = shared.auc_with_aggergated_predictions(y_true, y_pred)
+    roc_auc, pr_auc = shared.compute_auc(y_true, y_pred)
     acc = shared.compute_accuracy(y_true, y_pred)
 
     metrics = (roc_auc, pr_auc, acc)

@@ -1,8 +1,12 @@
-import numpy as np
-from datetime import datetime
-from sklearn import metrics
 import warnings
-warnings.filterwarnings('ignore')
+from ast import literal_eval
+from datetime import datetime
+
+import numpy as np
+from sklearn import metrics
+from sklearn.utils.multiclass import type_of_target
+
+warnings.filterwarnings("ignore")
 
 
 def get_epoch_time():
@@ -19,8 +23,8 @@ def load_id2gt(gt_file):
     fgt = open(gt_file)
     id2gt = dict()
     for line in fgt.readlines():
-        id, gt = line.strip().split("\t") # id is string
-        id2gt[id] = eval(gt) # gt is array
+        id, gt = line.strip().split("\t")  # id is string
+        id2gt[id] = literal_eval(gt)  # gt is array
         ids.append(id)
     return ids, id2gt
 
@@ -36,26 +40,21 @@ def load_id2path(index_file):
     return paths, id2path
 
 
-def auc_with_aggergated_predictions(y_true, y_pred):
-    print('now computing AUC..')
-    roc_auc, pr_auc = compute_auc(y_true, y_pred)
-    return np.mean(roc_auc), np.mean(pr_auc)
-
-
 def compute_auc(true, estimated):
-    pr_auc = []
-    roc_auc = []
-
+    """
+    Calculate macro PR-AUC and macro ROC-AUC using the default scikit-learn parameters.
+    """
     estimated = np.array(estimated)
     true = np.array(true)
 
-    for count in range(0, estimated.shape[1]):
-        try:
-            pr_auc.append(metrics.average_precision_score(true[:,count],estimated[:,count]))
-            roc_auc.append(metrics.roc_auc_score(true[:,count],estimated[:,count]))
-        except:
-            print('failed!')
+    if type_of_target(true) == "multiclass":
+        true = true.argmax(axis=1)
+
+    pr_auc = metrics.average_precision_score(true, estimated)
+    roc_auc = metrics.roc_auc_score(true, estimated)
+
     return roc_auc, pr_auc
+
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
