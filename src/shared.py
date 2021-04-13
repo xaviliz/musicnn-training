@@ -41,6 +41,9 @@ def load_id2path(index_file):
 
 
 def compute_auc(true, estimated):
+    """
+    Calculate macro PR-AUC and macro ROC-AUC using the default scikit-learn parameters.
+    """
     estimated = np.array(estimated)
     true = np.array(true)
 
