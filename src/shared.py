@@ -70,16 +70,21 @@ def compute_auc(true, estimated):
     """
     Calculate macro PR-AUC and macro ROC-AUC using the default scikit-learn parameters.
 
-    In case of multiclass data only ROC-AUC will be computed and PR AUC will be NaN.
+    Multiclass data is currently not supported and ROC-AUC & PR AUC will be NaN.
     """
     estimated = np.array(estimated)
     true = np.array(true)
 
     if type_of_groundtruth(true) == "multiclass-indicator":
         pr_auc = np.nan
+        # if we move to scikit-learn 0.22 we can calculate a roc_auc_score for
+        # multiclass data like this:
+        # estimated = estimated.argmax(axis=1)
+        # roc_auc = metrics.roc_auc_score(true, estimated, multi_class="ovr")
+        roc_auc = np.nan
     else:
         pr_auc = metrics.average_precision_score(true, estimated)
-    roc_auc = metrics.roc_auc_score(true, estimated, multi_class="ovr")
+        roc_auc = metrics.roc_auc_score(true, estimated)
     return roc_auc, pr_auc
 
 
