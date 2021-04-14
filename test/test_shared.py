@@ -26,3 +26,13 @@ def test_auc():
     # results of scikit-learn when using default parameters
     np.testing.assert_allclose(roc_auc, 0.8611111)
     np.testing.assert_allclose(pr_auc, 0.84444444)
+
+
+def test_type_of_groundtruth():
+    assert shared.type_of_groundtruth([1, -1, -1, 1]) == "binary"
+    assert (
+        shared.type_of_groundtruth(np.array([[0, 1], [1, 1]])) == "multilabel-indicator"
+    )
+    assert (
+        shared.type_of_groundtruth(np.array([[0, 1], [1, 0]])) == "multiclass-indicator"
+    )
