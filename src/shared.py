@@ -57,7 +57,10 @@ def type_of_groundtruth(y):
         sklearn.utils.multiclass.type_of_target
     """
     scikit_learn_type = type_of_target(y)
-    if scikit_learn_type == "multilabel-indicator" and np.count_nonzero(y) == y.shape[0]:
+    if (
+        scikit_learn_type == "multilabel-indicator"
+        and np.count_nonzero(y) == y.shape[0]
+    ):
         return "multiclass-indicator"
     else:
         return scikit_learn_type
@@ -66,16 +69,17 @@ def type_of_groundtruth(y):
 def compute_auc(true, estimated):
     """
     Calculate macro PR-AUC and macro ROC-AUC using the default scikit-learn parameters.
+
+    In case of multiclass data only ROC-AUC will be computed and PR AUC will be NaN.
     """
     estimated = np.array(estimated)
     true = np.array(true)
 
     if type_of_groundtruth(true) == "multiclass-indicator":
-        true = true.argmax(axis=1)
-
-    pr_auc = metrics.average_precision_score(true, estimated)
-    roc_auc = metrics.roc_auc_score(true, estimated)
-
+        pr_auc = np.nan
+    else:
+        pr_auc = metrics.average_precision_score(true, estimated)
+    roc_auc = metrics.roc_auc_score(true, estimated, multi_class="ovr")
     return roc_auc, pr_auc
 
 
