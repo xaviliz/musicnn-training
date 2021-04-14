@@ -22,7 +22,7 @@ def test_auc():
         [0, 1, 0],
     ]
     roc_auc, pr_auc = shared.compute_auc(groundtruth, predicted)
-    # This value were computed using the previous implementation and match the
+    # This value was computed using the previous implementation and match the
     # results of scikit-learn when using default parameters
     np.testing.assert_allclose(roc_auc, 0.8611111)
 
