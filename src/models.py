@@ -43,7 +43,7 @@ def model_number(x, is_training, config):
 
     elif config['model_number'] == 10:
         print('\nMODEL: BN input > [7, 70%][7, 40%] + temporal > RESIDUAL > GLOBAL POOLING')
-        frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['audio_rep']['n_mels'], num_filt=1.6, type='7774timbraltemporal', config=config)
+        frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['feature_params']['n_mels'], num_filt=1.6, type='7774timbraltemporal', config=config)
         frontend_features = tf.concat(frontend_features_list, 2) # concatnate features coming from the front-end
 
         midend_features_list = midend.dense_cnns(frontend_features, is_training, 64, config)
@@ -55,7 +55,7 @@ def model_number(x, is_training, config):
     elif config['model_number'] == 11:
         
         print('\nMODEL: BN input > [7, 70%][7, 40%] + temporal > DENSE > GLOBAL POOLING')
-        frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['audio_rep']['n_mels'], num_filt=1.6, type='7774timbraltemporal', trainable=trainable, config=config)
+        frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['feature_params']['n_mels'], num_filt=1.6, type='7774timbraltemporal', trainable=trainable, config=config)
         frontend_features = tf.concat(frontend_features_list, 2) # concatnate features coming from the front-end
 
         midend_features_list = midend.dense_cnns(frontend_features, is_training, 64, config, trainable=trainable)
@@ -66,7 +66,7 @@ def model_number(x, is_training, config):
 
     elif config['model_number'] == 12:
         print('\nMODEL: BN input > [7, 40%] > DENSE > ATTENTION + POSITIONAL ENCODING')
-        frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['audio_rep']['n_mels'], num_filt=4.5, type='74timbral', config=config)
+        frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['feature_params']['n_mels'], num_filt=4.5, type='74timbral', config=config)
         frontend_features = tf.concat(frontend_features_list, 2) # concatnate features coming from the front-end
 
         midend_features_list = midend.dense_cnns(frontend_features, is_training, config, 64)
@@ -77,7 +77,7 @@ def model_number(x, is_training, config):
 
     elif config['model_number'] == 13:
         print('\nMODEL: BN input > [7, 40%] > DENSE > AUTOPOOL')
-        frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['audio_rep']['n_mels'], num_filt=4.5, type='74timbral', config=config)
+        frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['feature_params']['n_mels'], num_filt=4.5, type='74timbral', config=config)
         frontend_features = tf.concat(frontend_features_list, 2) # concatnate features coming from the front-end
 
         midend_features_list = midend.dense_cnns(frontend_features, is_training, config, 64)
@@ -88,7 +88,7 @@ def model_number(x, is_training, config):
 
     elif config['model_number'] == 14:
         print('\nMODEL: BN input > [7, 70%][7, 40%] + temporal > RESIDUAL > RNN')
-        frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['audio_rep']['n_mels'], num_filt=1.6, type='7774timbraltemporal', config=config)
+        frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['feature_params']['n_mels'], num_filt=1.6, type='7774timbraltemporal', config=config)
         frontend_features = tf.concat(frontend_features_list, 2) # concatnate features coming from the front-end
 
         midend_features_list = midend.dense_cnns(frontend_features, is_training, config, 64)
@@ -102,7 +102,7 @@ def model_number(x, is_training, config):
     #     from flip_gradient import flip_gradient
 
     #     print('\nMODEL: BN input > [7, 70%][7, 40%] + temporal > DENSE > GLOBAL POOLING + RGL')
-    #     frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['audio_rep']['n_mels'], num_filt=1.6, type='7774timbraltemporal')
+    #     frontend_features_list = frontend.musically_motivated_cnns(x, is_training, config['feature_params']['n_mels'], num_filt=1.6, type='7774timbraltemporal')
     #     frontend_features = tf.concat(frontend_features_list, 2) # concatnate features coming from the front-end
 
     #     midend_features_list = midend.dense_cnns(frontend_features, is_training, 64)

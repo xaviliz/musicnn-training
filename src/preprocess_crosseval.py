@@ -14,11 +14,6 @@ from feature_ol3 import feature_ol3
 from feature_spleeter import feature_spleeter
 from feature_tempocnn import feature_tempocnn
 
-
-config_file = Namespace(**yaml.load(open('config_file.yaml'),
-                                    Loader=yaml.SafeLoader))
-config = config_file.config_preprocess
-
 DEBUG = True
 
 
@@ -46,7 +41,6 @@ def compute_audio_repr(audio_file, audio_repr_file, lib, force=False):
         raise Exception('no signal processing lib defined!')
 
     # Compute length
-    print(audio_repr.shape)
     length = audio_repr.shape[0]
 
     # Transform to float16 (to save storage, and works the same)
@@ -72,7 +66,6 @@ def do_process(files, index, lib):
         fw = open(os.path.join(metadata_dir, 'index.tsv'), 'a')
         fw.write("%s\t%s\n" % (id, audio_repr_file))
         fw.close()
-        print(str(index) + '/' + str(len(files)) + ' Computed: %s' % audio_file)
 
     except Exception as e:
         print('Error computing audio representation: ', audio_repr_file)

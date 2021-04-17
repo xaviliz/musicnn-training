@@ -1,25 +1,18 @@
 import argparse
 import json
-import pescador
-import shared, train
+from pathlib import Path
+
 import numpy as np
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
 from tqdm import tqdm
-import yaml
-from argparse import Namespace
-from data_loaders import data_gen_standard as data_gen
-import os
+import pescador
 
-config_file = Namespace(**yaml.load(open('config_file.yaml'), Loader=yaml.SafeLoader))
+from data_loaders import data_gen_standard as data_gen
+import train
+import shared
 
 TEST_BATCH_SIZE = 64
-MODEL_FOLDER = config_file.MODEL_FOLDER
-DATA_FOLDER = config_file.DATA_FOLDER
-FILE_INDEX = DATA_FOLDER + 'index_repr.tsv'
-FILE_GROUND_TRUTH_TEST = config_file.config_train['gt_test']
-FOLD = config_file.config_train['fold']
-NUM_CLASSES_DATASET = config_file.config_train['num_classes_dataset']
 
 
 def prediction(config, experiment_folder, id2audio_repr_path, id2gt, ids):
@@ -29,6 +22,7 @@ def prediction(config, experiment_folder, id2audio_repr_path, id2gt, ids):
     mux_stream = pescador.ChainMux(streams, mode='exhaustive')
     batch_streamer = pescador.Streamer(pescador.buffer_stream, mux_stream, buffer_size=TEST_BATCH_SIZE, partial=True)
     batch_streamer = pescador.ZMQStreamer(batch_streamer)
+    num_classes_dataset = config['num_classes_dataset']
 
     # tensorflow: define model and cost
     tf_graph = tf.Graph()
@@ -37,14 +31,14 @@ def prediction(config, experiment_folder, id2audio_repr_path, id2gt, ids):
         [x, y_, is_train, y, normalized_y, cost, _] = train.tf_define_model_and_cost(config)
         sess.run(tf.global_variables_initializer())
         saver = tf.train.Saver()
-        saver.restore(sess, experiment_folder)
+        saver.restore(sess, str(experiment_folder) + '/')
 
-        pred_array, id_array = np.empty([0, NUM_CLASSES_DATASET]), np.empty(0)
+        pred_array, id_array = np.empty([0, num_classes_dataset]), np.empty(0)
         for batch in tqdm(batch_streamer):
             pred, _ = sess.run([normalized_y, cost], feed_dict={x: batch['X'], y_: batch['Y'], is_train: False})
             # make sure our predictions are in a numpy
             # array with the proper shape
-            pred = np.array(pred).reshape(-1, NUM_CLASSES_DATASET)
+            pred = np.array(pred).reshape(-1, num_classes_dataset)
             pred_array = np.vstack([pred_array, pred])
             id_array = np.hstack([id_array, batch['ID']])
 
@@ -65,8 +59,7 @@ def prediction(config, experiment_folder, id2audio_repr_path, id2gt, ids):
 def store_results(results_file, predictions_file, models, ids, y_pred, metrics):
     roc_auc, pr_auc, acc = metrics
 
-    results_folder = os.path.dirname(results_file)
-    os.makedirs(results_folder, exist_ok=True)
+    results_file.parent.mkdir(exist_ok=True, parents=True)
 
     # print experimental results
     print('Metrics:')
@@ -92,38 +85,44 @@ if __name__ == '__main__':
     # which experiment we want to evaluate?
     # Use the -l functionality to ensemble models: python arg.py -l 1234 2345 3456 4567
     parser = argparse.ArgumentParser()
+    parser.add_argument('config_file', help='configuration file')
     parser.add_argument('-l', '--list', nargs='+', help='List of models to evaluate', required=True)
 
     args = parser.parse_args()
 
     models = args.list
+    config_file = Path(args.config_file)
+
+    config = json.load(open(config_file, "r"))
+    config_train = config['config_train']
+    file_index = str(Path(config['data_dir'], 'index_repr.tsv'))
+    exp_dir = config['exp_dir']
 
     # load all audio representation paths
-    [audio_repr_paths, id2audio_repr_path] = shared.load_id2path(FILE_INDEX)
+    [audio_repr_paths, id2audio_repr_path] = shared.load_id2path(file_index)
 
     for model in models:
-        experiment_folder = MODEL_FOLDER + 'experiments/' + str(model) + '/'
-        config = json.load(open(experiment_folder + 'config.json'))
-
+        experiment_folder = Path(exp_dir, 'experiments', str(model))
         print('Experiment: ' + str(model))
         print('\n' + str(config))
 
-        if 'melspectrogram' in config['audio_rep']['type']:
-            config['xInput'] = config['n_frames']
-        elif config['audio_rep']['type'] == 'embeddings':
-            config['xInput'] = 1
+        config_train['xInput'] = config_train['feature_params']['xInput']
+        config_train['yInput'] = config_train['feature_params']['yInput']
 
         # load ground truth
-        print('groundtruth file: {}'.format(FILE_GROUND_TRUTH_TEST))
-        ids, id2gt = shared.load_id2gt(FILE_GROUND_TRUTH_TEST)
+        print('groundtruth file: {}'.format(config_train['gt_test']))
+        ids, id2gt = shared.load_id2gt(config_train['gt_test'])
         print('# Test set size: ', len(ids))
 
         print('Performing regular evaluation')
-        y_pred, metrics = prediction(config, experiment_folder, id2audio_repr_path, id2gt, ids)
+        y_pred, metrics = prediction(
+            config_train, experiment_folder, id2audio_repr_path, id2gt, ids)
 
         # store experimental results
-        results_file = os.path.join(MODEL_FOLDER, 'results_{}'.format(FOLD))
-        predictions_file = os.path.join(MODEL_FOLDER, 'predictions_{}.json'.format(FOLD))
+        results_file = Path(
+            exp_dir, f"results_{config_train['fold']}")
+        predictions_file = Path(
+            exp_dir, f"predictions_{config_train['fold']}.json")
 
-        store_results(results_file, predictions_file, models, ids, y_pred, metrics)
-
+        store_results(results_file, predictions_file,
+                      models, ids, y_pred, metrics)

@@ -1,9 +1,7 @@
 import argparse
-from argparse import Namespace
 import json
-import os
+from pathlib import Path
 import time
-import yaml
 
 import numpy as np
 import tensorflow.compat.v1 as tf
@@ -13,7 +11,6 @@ import pescador
 import shared
 import classification_heads
 
-config_file = Namespace(**yaml.load(open('config_file.yaml'), Loader=yaml.SafeLoader))
 
 def write_summary(value, tag, step, writer):
     # Create a new Summary object with your measure
@@ -73,47 +70,35 @@ def model_and_cost(config, is_train):
 if __name__ == '__main__':
     # load config parameters defined in 'config_file.py'
     parser = argparse.ArgumentParser()
+    parser.add_argument('config_file', help='configuration file')
     parser.add_argument('-s', '--single_batch', action='store_true', help='iterate over a single batch')
     parser.add_argument('-n', '--number_samples', type=int, help='iterate over a just n random samples')
+
     args = parser.parse_args()
-    config = config_file.config_train
+
+    config_file = args.config_file
     single_batch = args.single_batch
     number_samples = args.number_samples
 
+    config = json.load(open(config_file, "r"))
+    exp_dir = Path(config['exp_dir'])
+    data_dir = Path(config['data_dir'])
+
+    # we only need the config_train sub-dictionary
+    config = config['config_train']
+
     np.random.seed(seed=config['seed'])
 
-    # load config parameters used in 'preprocess_essentia.py'
-    config_json = os.path.join(config['audio_representation_folder'], 'config.json')
-    with open(config_json, "r") as f:
-        params = json.load(f)
-    config['audio_rep'] = params
-
-    # audioset features are already compressed
-    if config['model_number'] == 20:
-        print('overwritting spectrogram configuration for the vggish-audioset model')
-
-        config['pre_processing'] = ''
-        config['n_frames'] = 96
-        config['audio_rep']['n_mels'] = 64
-
     # set patch parameters
-    if config['audio_rep']['type'] == 'waveform':
-        raise ValueError('Waveform-based training is not implemented')
-
-    elif 'melspectrogram' in config['audio_rep']['type']:
-        config['xInput'] = config['n_frames']
-        config['yInput'] = config['audio_rep']['n_mels']
-
-    elif config['audio_rep']['type'] == 'embeddings':
-        config['xInput'] = 1
-        config['yInput'] = config['audio_rep']['n_embeddings']
+    config['xInput'] = config['feature_params']['xInput']
+    config['yInput'] = config['feature_params']['yInput']
 
     # get the data loader
     print('Loading data generator for regular training')
     from data_loaders import data_gen_standard as data_gen
 
     # load audio representation paths
-    file_index = config_file.DATA_FOLDER + 'index_repr.tsv'
+    file_index = data_dir / 'index_repr.tsv'
     [audio_repr_paths, id2audio_repr_path] = shared.load_id2path(file_index)
 
     # load training data
@@ -132,11 +117,12 @@ if __name__ == '__main__':
     print('# Classes:', config['classes_vector'])
 
     # save experimental settings
-    experiment_id = str(shared.get_epoch_time()) + config['audio_rep']['type']
-    model_folder = config_file.MODEL_FOLDER + 'experiments/' + str(experiment_id) + '/'
-    if not os.path.exists(model_folder):
-        os.makedirs(model_folder)
-    json.dump(config, open(model_folder + 'config.json', 'w'))
+    experiment_id = str(shared.get_epoch_time()) + config['feature_type']
+    # model_folder = config_file.MODEL_FOLDER + 'experiments/' + str(experiment_id) + '/'
+    model_folder = exp_dir / 'experiments' / experiment_id
+    if not model_folder.exists():
+        model_folder.mkdir(parents=True, exist_ok=True)
+    json.dump(config, open(model_folder / 'config.json', 'w'))
     print('\nConfig file saved: ' + str(config))
 
     # tensorflow: define model and cost
@@ -195,8 +181,8 @@ if __name__ == '__main__':
     val_batch_streamer = pescador.Streamer(pescador.buffer_stream, val_mux_stream, buffer_size=config['val_batch_size'], partial=True)
     val_batch_streamer = pescador.ZMQStreamer(val_batch_streamer)
 
-    train_file_writer = tf.summary.FileWriter(os.path.join(model_folder, 'logs', 'train'), sess.graph)
-    val_file_writer = tf.summary.FileWriter(os.path.join(model_folder, 'logs', 'val'), sess.graph)
+    train_file_writer = tf.summary.FileWriter(str(model_folder / 'logs' / 'train'), sess.graph)
+    val_file_writer = tf.summary.FileWriter(str(model_folder / 'logs' / 'val'), sess.graph)
 
     # tensorflow: create a session to run the tensorflow graph
     sess.run(tf.global_variables_initializer())
@@ -213,13 +199,13 @@ if __name__ == '__main__':
     saver = tf.train.Saver()
 
     # writing headers of the train_log.tsv
-    fy = open(model_folder + 'train_log.tsv', 'a')
+    fy = open(model_folder / 'train_log.tsv', 'a')
     fy.write('Epoch\ttrain_cost\tval_cost\tepoch_time\tlearing_rate\n')
 
     fy.close()
 
     # automate the evaluation process
-    experiment_id_file = os.path.join(config_file.MODEL_FOLDER, 'experiment_id_{}'.format(config['fold']))
+    experiment_id_file = exp_dir / 'experiment_id_{}'.format(config['fold'])
     with open(experiment_id_file, 'w') as f:
         f.write(str(experiment_id))
 
@@ -252,7 +238,7 @@ if __name__ == '__main__':
 
         val_cost = np.mean(array_val_cost)
         epoch_time = time.time() - start_time
-        fy = open(model_folder + 'train_log.tsv', 'a')
+        fy = open(model_folder / 'train_log.tsv', 'a')
         fy.write('%g\t%g\t%g\t%gs\t%g\n' % (i+1, train_cost, val_cost, epoch_time, tmp_learning_rate))
         fy.close()
 
@@ -274,7 +260,7 @@ if __name__ == '__main__':
 
         else:
             # save model weights to disk
-            save_path = saver.save(sess, model_folder)
+            save_path = saver.save(sess, str(model_folder) + '/')  # TF needs this tailing `/`
             print('Epoch %d, train cost %g, '
                     'val cost %g, '
                     'epoch-time %gs, lr %g, time-stamp %s - [BEST MODEL]'

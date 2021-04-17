@@ -70,11 +70,6 @@ if __name__ == '__main__':
         experiment_folder = os.path.join(model_dir, str(model))
         config = json.load(open(os.path.join(experiment_folder, 'config.json')))
 
-        if 'melspectrogram' in config['audio_rep']['type']:
-            config['xInput'] = config['n_frames']
-        elif config['audio_rep']['type'] == 'embeddings':
-            config['xInput'] = 1
-
         print('Experiment: ' + str(model))
         print('\n' + str(config))
 
