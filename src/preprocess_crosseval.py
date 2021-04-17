@@ -61,7 +61,7 @@ def do_process(files, index, feature_type):
             path = Path(audio_repr_file[:audio_repr_file.rfind('/') + 1])
             path.mkdir(parents=True, exist_ok=True)
         # compute audio representation (pre-processing)
-        length = compute_audio_repr(audio_file, audio_repr_file, lib)
+        _ = compute_audio_repr(audio_file, audio_repr_file, feature_type)
         # index.tsv writing
         fw = open(os.path.join(metadata_dir, 'index.tsv'), 'a')
         fw.write("%s\t%s\n" % (id, audio_repr_file))
