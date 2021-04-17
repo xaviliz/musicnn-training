@@ -23,7 +23,7 @@ DEBUG = False
 def compute_audio_repr(audio_file, audio_repr_file, force=False):
     if not force:
         if os.path.exists(audio_repr_file):
-            print('{} exists. skipping!'.format(audio_file))
+            print('{} exists. skipping!'.format(audio_repr_file))
             return 0
 
     if config['config_train']['feature_type'] == 'waveform':
