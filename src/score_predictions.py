@@ -57,12 +57,12 @@ def score_predictions(args):
 
     store_results(results_file, roc_auc, pr_auc, acc, accs, report, dataset)
 
-def get_metrics(y_true, y_pred, fold_gt, fold_pred, folds):
+def get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds):
     roc_auc, pr_auc = shared.compute_auc(y_true, y_pred)
     acc = shared.compute_accuracy(y_true, y_pred)
 
     accs = []
-    for i in range(N_FOLDS):
+    for i in range(n_folds):
         y_true_fold = fold_gt[i]
         y_pred_fold = fold_pred[i]
         accs.append(shared.compute_accuracy(y_true_fold, y_pred_fold))
