@@ -17,7 +17,7 @@ from feature_tempocnn import feature_tempocnn
 DEBUG = True
 
 
-def compute_audio_repr(audio_file, audio_repr_file, lib, force=False):
+def compute_audio_repr(audio_file, audio_repr_file, feature_type, force=False):
     if not force:
         if os.path.exists(audio_repr_file):
             print('{} exists. skipping!'.format(audio_repr_file))
@@ -27,15 +27,15 @@ def compute_audio_repr(audio_file, audio_repr_file, lib, force=False):
     if not os.path.exists(base_dir):
         os.makedirs(base_dir)
 
-    if lib == 'essentia':
+    if feature_type == 'musicnn-melspectrogram':
         audio_repr = feature_melspectrogram_essentia(audio_file)
-    elif lib == 'vggish':
+    elif feature_type == 'vggish-melspectrogram':
         audio_repr = feature_melspectrogram_vggish(audio_file)
-    elif lib == 'ol3':
+    elif feature_type == 'ol3':
         audio_repr = feature_ol3(audio_file)
-    elif lib == 'spleeter':
+    elif feature_type == 'spleeter':
         audio_repr = feature_spleeter(audio_file)
-    elif lib == 'tempocnn':
+    elif feature_type == 'tempocnn':
         audio_repr = feature_tempocnn(audio_file)
     else:
         raise Exception('no signal processing lib defined!')
@@ -54,7 +54,7 @@ def compute_audio_repr(audio_file, audio_repr_file, lib, force=False):
     return length
 
 
-def do_process(files, index, lib):
+def do_process(files, index, feature_type):
     try:
         [id, audio_file, audio_repr_file] = files[index]
         if not os.path.exists(audio_repr_file[:audio_repr_file.rfind('/') + 1]):
@@ -73,14 +73,14 @@ def do_process(files, index, lib):
         print(str(e))
 
 
-def process_files(files, lib):
+def process_files(files, feature_type):
     if DEBUG:
         print('WARNING: Parallelization is not used!')
         for index in tqdm(range(0, len(files))):
-            do_process(files, index, lib)
+            do_process(files, index, feature_type)
     else:
         Parallel(n_jobs=config['num_processing_units'])(
-            delayed(do_process)(files, index, lib) for index in range(0, len(files)))
+            delayed(do_process)(files, index, feature_type) for index in range(0, len(files)))
 
 
 if __name__ == '__main__':
@@ -88,14 +88,24 @@ if __name__ == '__main__':
     parser.add_argument('index_file', help='index file')
     parser.add_argument('audio_dir', help='grountruth file')
     parser.add_argument('data_dir', help='grountruth file')
-    parser.add_argument('lib', help='dsp lib', choices=['essentia', 'librosa', 'vggish', 'ol3', 'spleeter', 'tempocnn'])
-
+    parser.add_argument('--feature-type', '-ft', default='musicnn-melspectrogram',
+                        choices=[
+                            'musicnn-melspectrogram',
+                            'vggish-melspectrogram',
+                            'musicnn',
+                            'vggish',
+                            'ol3',
+                            'tempocnn',
+                            'spleeter',
+                            'effnet_b0'
+                            ],
+                        help='input feature type')
     args = parser.parse_args()
 
     index_file = args.index_file
     audio_dir = args.audio_dir
     data_dir = args.data_dir
-    lib = args.lib
+    feature_type = args.feature_type
 
 
     # set audio representations folder
@@ -122,4 +132,4 @@ if __name__ == '__main__':
 
         files_to_convert.append((id, src, tgt))
 
-    process_files(files_to_convert, lib)
+    process_files(files_to_convert, feature_type)
