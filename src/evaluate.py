@@ -17,7 +17,7 @@ TEST_BATCH_SIZE = 64
 
 def prediction(config, experiment_folder, id2audio_repr_path, id2gt, ids):
     # pescador: define (finite, batched & parallel) streamer
-    pack = [config, 'overlap_sampling', config['xInput'], False, DATA_FOLDER]
+    pack = [config, 'overlap_sampling', config['xInput']]
     streams = [pescador.Streamer(data_gen, id, id2audio_repr_path[id], id2gt[id], pack) for id in ids]
     mux_stream = pescador.ChainMux(streams, mode='exhaustive')
     batch_streamer = pescador.Streamer(pescador.buffer_stream, mux_stream, buffer_size=TEST_BATCH_SIZE, partial=True)
@@ -36,7 +36,7 @@ def prediction(config, experiment_folder, id2audio_repr_path, id2gt, ids):
         pred_array, id_array = np.empty([0, num_classes_dataset]), np.empty(0)
         for batch in tqdm(batch_streamer):
             pred, _ = sess.run([normalized_y, cost], feed_dict={x: batch['X'], y_: batch['Y'], is_train: False})
-            # make sure our predictions are in a numpy
+            # make sure our predictions have are a np
             # array with the proper shape
             pred = np.array(pred).reshape(-1, num_classes_dataset)
             pred_array = np.vstack([pred_array, pred])
@@ -83,7 +83,7 @@ def store_results(results_file, predictions_file, models, ids, y_pred, metrics):
 
 if __name__ == '__main__':
     # which experiment we want to evaluate?
-    # Use the -l functionality to ensemble models: python arg.py -l 1234 2345 3456 4567
+    # Use the -l functionality to ensamble models: python arg.py -l 1234 2345 3456 4567
     parser = argparse.ArgumentParser()
     parser.add_argument('config_file', help='configuration file')
     parser.add_argument('-l', '--list', nargs='+', help='List of models to evaluate', required=True)

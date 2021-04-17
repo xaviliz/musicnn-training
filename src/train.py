@@ -168,14 +168,14 @@ if __name__ == '__main__':
         json.dump(config, open(model_folder + 'config.json', 'w'))
 
     # pescador train: define streamer
-    train_pack = [config, config['train_sampling'], config['param_train_sampling'], False, config_file.DATA_FOLDER]
+    train_pack = [config, config['train_sampling'], config['param_train_sampling']]
     train_streams = [pescador.Streamer(data_gen, id, id2audio_repr_path[id], id2gt_train[id], train_pack) for id in ids_train]
     train_mux_stream = pescador.StochasticMux(train_streams, n_active=config['batch_size']*2, rate=None, mode='exhaustive')
     train_batch_streamer = pescador.Streamer(pescador.buffer_stream, train_mux_stream, buffer_size=config['batch_size'], partial=True)
     train_batch_streamer = pescador.ZMQStreamer(train_batch_streamer)
 
     # pescador val: define streamer
-    val_pack = [config, 'overlap_sampling', config['xInput'], False, config_file.DATA_FOLDER]
+    val_pack = [config, 'overlap_sampling', config['xInput']]
     val_streams = [pescador.Streamer(data_gen, id, id2audio_repr_path[id], id2gt_val[id], val_pack) for id in ids_val]
     val_mux_stream = pescador.ChainMux(val_streams, mode='exhaustive')
     val_batch_streamer = pescador.Streamer(pescador.buffer_stream, val_mux_stream, buffer_size=config['val_batch_size'], partial=True)

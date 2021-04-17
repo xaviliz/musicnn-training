@@ -74,7 +74,7 @@ if __name__ == '__main__':
         print('\n' + str(config))
 
         # pescador: define (finite, batched & parallel) streamer
-        pack = [config, 'overlap_sampling', config['xInput'], False]
+        pack = [config, 'overlap_sampling', config['xInput']]
         streams = [pescador.Streamer(data_gen, id, id2audio_repr_path[id], [0] * config['num_classes_dataset'], pack) for id in ids]
         mux_stream = pescador.ChainMux(streams, mode='exhaustive')
         batch_streamer = pescador.Streamer(pescador.buffer_stream, mux_stream, buffer_size=TEST_BATCH_SIZE, partial=True)
