@@ -6,11 +6,13 @@ import numpy as np
 from sklearn import metrics
 from sklearn.utils.multiclass import type_of_target
 
+MULTICLASS_INDICATOR = "multiclass-indicator"
+
 warnings.filterwarnings("ignore")
 
 
 def get_epoch_time():
-    return int((datetime.now() - datetime(1970,1,1)).total_seconds())
+    return int((datetime.now() - datetime(1970, 1, 1)).total_seconds())
 
 
 def count_params(trainable_variables):
@@ -34,7 +36,10 @@ def load_id2path(index_file):
     fspec = open(index_file)
     id2path = dict()
     for line in fspec.readlines():
-        id, path, = line.strip().split("\t")
+        (
+            id,
+            path,
+        ) = line.strip().split("\t")
         id2path[id] = path
         paths.append(path)
     return paths, id2path
@@ -61,7 +66,7 @@ def type_of_groundtruth(y):
         scikit_learn_type == "multilabel-indicator"
         and np.count_nonzero(y) == len(y)
     ):
-        return "multiclass-indicator"
+        return MULTICLASS_INDICATOR
     else:
         return scikit_learn_type
 
@@ -75,7 +80,7 @@ def compute_auc(true, estimated):
     estimated = np.array(estimated)
     true = np.array(true)
 
-    if type_of_groundtruth(true) == "multiclass-indicator":
+    if type_of_groundtruth(true) == MULTICLASS_INDICATOR:
         pr_auc = np.nan
         # if we move to scikit-learn 0.22 we can calculate a roc_auc_score for
         # multiclass data like this:
@@ -91,7 +96,8 @@ def compute_auc(true, estimated):
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
 
-def minmax_standarize(x, x_min=-1, x_max=1, headroom=.1):
+
+def minmax_standarize(x, x_min=-1, x_max=1, headroom=0.1):
     return (x - x_min) / ((x_max + headroom) - (x_min - headroom))
 
 
@@ -125,6 +131,7 @@ def average_predictions(pred_array, id_array, ids, id2gt=None):
     else:
         return y_pred
 
+
 def average_predictions_ids(pred_array, id_array, ids):
     # averages the predictions and returns the ids of the elements
     # that did not fail.
@@ -156,10 +163,12 @@ def average_predictions_ids(pred_array, id_array, ids):
 def compute_accuracy(y_true, y_pred):
     print('computing accuracy of {} elements'.format(len(y_true)))
 
-    if type_of_groundtruth(y_true) == "multilabel-indicator":
+    groundtruth_type = type_of_groundtruth(y_true)
+    print(f"Compute accuracy for: {groundtruth_type}")
+    if groundtruth_type == "multilabel-indicator":
         y_pred = np.round(y_pred)
         return metrics.accuracy_score(y_true, y_pred)
-    elif type_of_groundtruth(y_true) == "multiclass-indicator":
+    elif groundtruth_type == MULTICLASS_INDICATOR:
         y_true = np.argmax(y_true, axis=1)
         y_pred = np.argmax(y_pred, axis=1)
     else:
