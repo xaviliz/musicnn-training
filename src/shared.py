@@ -40,19 +40,51 @@ def load_id2path(index_file):
     return paths, id2path
 
 
+def type_of_groundtruth(y):
+    """
+    Get the type of groundtruth data by extending scikit learn functionality.
+
+    scikit-learn will detect one-hot encoded multiclass data as multilabl-indicator.
+    If this is the case this function returns "multiclass-indicator", which is
+    currently not used in scikit-learn, and the scikit-learn result otherwise.
+
+    Args:
+        y: numpy array with the groundtruth data
+
+    Returns:
+        target_type: string
+        Either "multiclass-indicator" or the result of
+        sklearn.utils.multiclass.type_of_target
+    """
+    scikit_learn_type = type_of_target(y)
+    if (
+        scikit_learn_type == "multilabel-indicator"
+        and np.count_nonzero(y) == y.shape[0]
+    ):
+        return "multiclass-indicator"
+    else:
+        return scikit_learn_type
+
+
 def compute_auc(true, estimated):
     """
     Calculate macro PR-AUC and macro ROC-AUC using the default scikit-learn parameters.
+
+    Multiclass data is currently not supported and ROC-AUC & PR AUC will be NaN.
     """
     estimated = np.array(estimated)
     true = np.array(true)
 
-    if type_of_target(true) == "multiclass":
-        true = true.argmax(axis=1)
-
-    pr_auc = metrics.average_precision_score(true, estimated)
-    roc_auc = metrics.roc_auc_score(true, estimated)
-
+    if type_of_groundtruth(true) == "multiclass-indicator":
+        pr_auc = np.nan
+        # if we move to scikit-learn 0.22 we can calculate a roc_auc_score for
+        # multiclass data like this:
+        # estimated = estimated.argmax(axis=1)
+        # roc_auc = metrics.roc_auc_score(true, estimated, multi_class="ovr")
+        roc_auc = np.nan
+    else:
+        pr_auc = metrics.average_precision_score(true, estimated)
+        roc_auc = metrics.roc_auc_score(true, estimated)
     return roc_auc, pr_auc
 
 
