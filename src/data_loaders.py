@@ -60,13 +60,20 @@ def data_gen_standard(id, audio_repr_path, gt, pack):
                                    config['yInput'],
                                    frames_num,
                                    single_patch=True,
-                                   offset=offset),
+                                   offset=offset,
+                                   compression=config['feature_params']['compression']
+                                   ),
                     'Y': gt,
                     'ID': id
                 }
 
         elif sampling == 'overlap_sampling':
-            audio_rep = read_mmap(audio_repr_path, config['xInput'], config['yInput'], frames_num)
+            audio_rep = read_mmap(audio_repr_path,
+                                  config['xInput'],
+                                  config['yInput'],
+                                  frames_num,
+                                  compression=config['feature_params']['compression']
+                                  )
             last_frame = int(audio_rep.shape[0]) - int(config['xInput']) + 1
             for time_stamp in range(0, last_frame, param_sampling):
                 yield {
