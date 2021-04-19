@@ -55,8 +55,8 @@ def test_compute_accuracy():
         [0, 0, 1],
     ]
 
-    acc_multilabel = shared.compute_accuracy(y_true, y_pred)
-    np.testing.assert_allclose(acc_multilabel, 0.5)
+    acc = shared.compute_accuracy(y_true, y_pred)
+    np.testing.assert_allclose(acc, 0.5)
     y_pred_ml = [
         [0.21, 0.31, 0.5],  # fp 0, 0, 1
         [0.81, 0.71, 0.1],  # tp 1, 1, 0
