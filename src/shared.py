@@ -64,7 +64,7 @@ def type_of_groundtruth(y):
     scikit_learn_type = type_of_target(y)
     if (
         scikit_learn_type == "multilabel-indicator"
-        and np.count_nonzero(y) == len(y)
+        and np.count_nonzero(y) == y.shape[0]
     ):
         return MULTICLASS_INDICATOR
     else:
@@ -161,10 +161,11 @@ def average_predictions_ids(pred_array, id_array, ids):
 
 
 def compute_accuracy(y_true, y_pred):
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
     print('computing accuracy of {} elements'.format(len(y_true)))
 
     groundtruth_type = type_of_groundtruth(y_true)
-    print(f"Compute accuracy for: {groundtruth_type}")
     if groundtruth_type == "multilabel-indicator":
         y_pred = np.round(y_pred)
         return metrics.accuracy_score(y_true, y_pred)
