@@ -1,11 +1,8 @@
 import os
 from joblib import Parallel, delayed
 import argparse
-import pickle
 import numpy as np
 from pathlib import Path
-import yaml
-from argparse import Namespace
 from tqdm import tqdm
 
 from feature_melspectrogram_essentia import feature_melspectrogram_essentia
