@@ -14,7 +14,7 @@ from feature_ol3 import feature_ol3
 from feature_spleeter import feature_spleeter
 from feature_tempocnn import feature_tempocnn
 
-DEBUG = True
+DEBUG = False
 
 
 def compute_audio_repr(audio_file, audio_repr_file, feature_type, force=False):
