@@ -73,14 +73,13 @@ def do_process(files, index, feature_type):
         print(str(e))
 
 
-def process_files(files, feature_type):
+def process_files(files, feature_type, n_jobs):
     if DEBUG:
         print('WARNING: Parallelization is not used!')
         for index in tqdm(range(0, len(files))):
             do_process(files, index, feature_type)
     else:
-        Parallel(n_jobs=config['num_processing_units'])(
-            delayed(do_process)(files, index, feature_type) for index in range(0, len(files)))
+        Parallel(n_jobs=n_jobs)(delayed(do_process)(files, index, feature_type) for index in range(0, len(files)))
 
 
 if __name__ == '__main__':
@@ -98,15 +97,17 @@ if __name__ == '__main__':
                             'tempocnn',
                             'spleeter',
                             'effnet_b0'
-                            ],
+                        ],
                         help='input feature type')
+    parser.add_argument('--n-jobs', default=4, type=int,
+                        help='number of parallel jobs for feature extraction')
     args = parser.parse_args()
 
     index_file = args.index_file
     audio_dir = args.audio_dir
     data_dir = args.data_dir
     feature_type = args.feature_type
-
+    n_jobs = args.n_jobs
 
     # set audio representations folder
     metadata_dir = os.path.join(data_dir, 'metadata')
@@ -132,4 +133,4 @@ if __name__ == '__main__':
 
         files_to_convert.append((id, src, tgt))
 
-    process_files(files_to_convert, feature_type)
+    process_files(files_to_convert, feature_type, n_jobs)
