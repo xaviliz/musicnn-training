@@ -4,7 +4,7 @@ import os
 from argparse import Namespace
 from pathlib import Path
 
-import librosa
+import essentia.standard as es
 import numpy as np
 import yaml
 from joblib import Parallel, delayed
@@ -27,11 +27,11 @@ def compute_audio_repr(audio_file, audio_repr_file, force=False):
             return 0
 
     if config['config_train']['feature_type'] == 'waveform':
-        audio, sr = librosa.load(audio_file, sr=config['resample_sr'])
+        audio = es.MonoLoader(
+            filename=audio_file, sampleRate=config['config_train']['feature_params']['resample_sr'])()
         audio_repr = audio
         audio_repr = np.expand_dims(audio_repr, axis=1)
-
-    if config['config_train']['feature_type'] == 'musicnn-melspectrogram':
+    elif config['config_train']['feature_type'] == 'musicnn-melspectrogram':
         audio_repr = feature_melspectrogram_essentia(audio_file)
     elif config['config_train']['feature_type'] == 'vggish-melspectrogram':
         audio_repr = feature_melspectrogram_vggish(audio_file)
