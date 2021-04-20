@@ -37,7 +37,7 @@ def test_type_of_groundtruth():
     )
 
 
-def test_compute_accuracy():
+def test_compute_accuracy_multiclass():
     y_pred = [
         [0.2, 0.3, 0.5],  # fp 0, 0, 1
         [0.8, 0.1, 0.1],  # tp 1, 0, 0
@@ -57,6 +57,9 @@ def test_compute_accuracy():
 
     acc = shared.compute_accuracy(y_true, y_pred)
     np.testing.assert_allclose(acc, 0.5)
+
+
+def test_compute_accuracy_multilabel():
     y_pred_ml = [
         [0.21, 0.31, 0.5],  # fp 0, 0, 1
         [0.81, 0.71, 0.1],  # tp 1, 1, 0
