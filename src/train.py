@@ -20,11 +20,14 @@ def write_summary(value, tag, step, writer):
 
     writer.add_summary(summary, step)
 
+
 def tf_define_model_and_cost(config):
-        return model_and_cost(config, tf.placeholder(tf.bool))
+    return model_and_cost(config, tf.placeholder(tf.bool))
+
 
 def tf_define_model_and_cost_freeze(config):
-        return model_and_cost(config, False)
+    return model_and_cost(config, False)
+
 
 def model_and_cost(config, is_train):
     # tensorflow: define the model
@@ -45,8 +48,7 @@ def model_and_cost(config, is_train):
         normalized_y = tf.nn.softmax(y)
         print(normalized_y.get_shape())
 
-
-    print('Number of parameters of the model: ' + str(shared.count_params(tf.trainable_variables()))+'\n')
+    print('Number of parameters of the model: ' + str(shared.count_params(tf.trainable_variables())) + '\n')
 
     # tensorflow: define cost function
     with tf.name_scope('metrics'):
@@ -54,7 +56,7 @@ def model_and_cost(config, is_train):
         cost = tf.losses.softmax_cross_entropy(y_, y)
         if config['weight_decay'] is not None:
             vars = tf.trainable_variables()
-            lossL2 = tf.add_n([ tf.nn.l2_loss(v) for v in vars if 'kernel' or 'weights' in v.name ])
+            lossL2 = tf.add_n([tf.nn.l2_loss(v) for v in vars if 'kernel' or 'weights' in v.name])
             cost = cost + config['weight_decay'] * lossL2
             print('L2 norm, weight decay!')
 
@@ -64,7 +66,6 @@ def model_and_cost(config, is_train):
         print(variables)
 
     return [x, y_, is_train, y, normalized_y, cost, model_vars]
-
 
 
 if __name__ == '__main__':
@@ -119,7 +120,6 @@ if __name__ == '__main__':
 
     # save experimental settings
     experiment_id = str(shared.get_epoch_time()) + config['feature_type']
-    # model_folder = config_file.MODEL_FOLDER + 'experiments/' + str(experiment_id) + '/'
     model_folder = exp_dir / 'experiments' / experiment_id
     if not model_folder.exists():
         model_folder.mkdir(parents=True, exist_ok=True)
@@ -130,7 +130,7 @@ if __name__ == '__main__':
     [x, y_, is_train, y, normalized_y, cost, model_vars] = tf_define_model_and_cost(config)
 
     # tensorflow: define optimizer
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS) # needed for batchnorm
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)  # needed for batchnorm
     with tf.control_dependencies(update_ops):
         lr = tf.placeholder(tf.float32)
         if config['optimizer'] == 'SGD_clip':
@@ -170,16 +170,28 @@ if __name__ == '__main__':
 
     # pescador train: define streamer
     train_pack = [config, config['train_sampling'], config['param_train_sampling']]
-    train_streams = [pescador.Streamer(data_gen, id, id2audio_repr_path[id], id2gt_train[id], train_pack) for id in ids_train]
-    train_mux_stream = pescador.StochasticMux(train_streams, n_active=config['batch_size']*2, rate=None, mode='exhaustive')
-    train_batch_streamer = pescador.Streamer(pescador.buffer_stream, train_mux_stream, buffer_size=config['batch_size'], partial=True)
+    train_streams = [pescador.Streamer(data_gen, id, id2audio_repr_path[id], id2gt_train[id], train_pack)
+                     for id in ids_train]
+    train_mux_stream = pescador.StochasticMux(train_streams,
+                                              n_active=config['batch_size'] * 2,
+                                              rate=None,
+                                              mode='exhaustive'
+                                              )
+    train_batch_streamer = pescador.Streamer(pescador.buffer_stream,
+                                             train_mux_stream,
+                                             buffer_size=config['batch_size'],
+                                             partial=True
+                                             )
     train_batch_streamer = pescador.ZMQStreamer(train_batch_streamer)
 
     # pescador val: define streamer
     val_pack = [config, 'overlap_sampling', config['xInput']]
     val_streams = [pescador.Streamer(data_gen, id, id2audio_repr_path[id], id2gt_val[id], val_pack) for id in ids_val]
     val_mux_stream = pescador.ChainMux(val_streams, mode='exhaustive')
-    val_batch_streamer = pescador.Streamer(pescador.buffer_stream, val_mux_stream, buffer_size=config['val_batch_size'], partial=True)
+    val_batch_streamer = pescador.Streamer(pescador.buffer_stream,
+                                           val_mux_stream,
+                                           buffer_size=config['val_batch_size'],
+                                           partial=True)
     val_batch_streamer = pescador.ZMQStreamer(val_batch_streamer)
 
     train_file_writer = tf.summary.FileWriter(str(model_folder / 'logs' / 'train'), sess.graph)
@@ -190,7 +202,7 @@ if __name__ == '__main__':
     # Required by the accuracy metrics
     sess.run(tf.local_variables_initializer())
 
-    if config['load_model'] is not None: # restore model weights from previously saved model
+    if config['load_model'] is not None:  # restore model weights from previously saved model
         saver = tf.train.Saver(var_list=model_vars[:-4])
         saver.restore(sess, config['load_model'])  # end with /!
         print('Pre-trained model loaded!')
@@ -224,7 +236,10 @@ if __name__ == '__main__':
             for train_batch in train_batch_streamer:
                 tf_start = time.time()
                 _, train_cost = sess.run([train_step, cost],
-                                            feed_dict={x: train_batch['X'], y_: train_batch['Y'], lr: tmp_learning_rate, is_train: True})
+                                         feed_dict={x: train_batch['X'],
+                                                    y_: train_batch['Y'],
+                                                    lr: tmp_learning_rate,
+                                                    is_train: True})
                 array_train_cost.append(train_cost)
 
         # validation
@@ -240,7 +255,7 @@ if __name__ == '__main__':
         val_cost = np.mean(array_val_cost)
         epoch_time = time.time() - start_time
         fy = open(model_folder / 'train_log.tsv', 'a')
-        fy.write('%g\t%g\t%g\t%gs\t%g\n' % (i+1, train_cost, val_cost, epoch_time, tmp_learning_rate))
+        fy.write('%g\t%g\t%g\t%gs\t%g\n' % (i + 1, train_cost, val_cost, epoch_time, tmp_learning_rate))
         fy.close()
 
         # Decrease the learning rate after not improving in the validation set
@@ -254,20 +269,20 @@ if __name__ == '__main__':
         if val_cost >= cost_best_model:
             k_patience += 1
             print('Epoch %d, train cost %g, '
-                    'val cost %g, '
-                    'epoch-time %gs, lr %g, time-stamp %s' %
-                    (i+1, train_cost, val_cost, epoch_time, tmp_learning_rate,
-                    str(time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime()))))
+                  'val cost %g, '
+                  'epoch-time %gs, lr %g, time-stamp %s' %
+                  (i + 1, train_cost, val_cost, epoch_time, tmp_learning_rate,
+                   str(time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime()))))
 
         else:
             # save model weights to disk
             save_path = saver.save(sess, str(model_folder) + '/')  # TF needs this tailing `/`
             print('Epoch %d, train cost %g, '
-                    'val cost %g, '
-                    'epoch-time %gs, lr %g, time-stamp %s - [BEST MODEL]'
-                    ' saved in: %s' %
-                    (i+1, train_cost, val_cost, epoch_time,tmp_learning_rate,
-                    str(time.strftime('%Y-%m-%d %H:%M:%S',time.gmtime())), save_path))
+                  'val cost %g, '
+                  'epoch-time %gs, lr %g, time-stamp %s - [BEST MODEL]'
+                  ' saved in: %s' %
+                  (i + 1, train_cost, val_cost, epoch_time, tmp_learning_rate,
+                   str(time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())), save_path))
             cost_best_model = val_cost
 
-    print('\nEVALUATE EXPERIMENT -> '+ str(experiment_id))
+    print('\nEVALUATE EXPERIMENT -> ' + str(experiment_id))
