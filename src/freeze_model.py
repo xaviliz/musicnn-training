@@ -61,7 +61,7 @@ if __name__ == '__main__':
     elif config['config_train']['model_number'] == 20:
         arch = 'vggish'
     else:
-        raise Exception('Model number not found ({})'.format(config['config_train']['model_number']))
+        raise ValueError('Model number not found ({})'.format(config['config_train']['model_number']))
 
     # get the source task from the model name
     if config['config_train']['load_model']:
