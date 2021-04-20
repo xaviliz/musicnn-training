@@ -80,7 +80,8 @@ if __name__ == '__main__':
     single_batch = args.single_batch
     number_samples = args.number_samples
 
-    config = json.load(open(config_file, "r"))
+    with open(config_file, "r") as f:
+        config = json.load(f)
     exp_dir = Path(config['exp_dir'])
     data_dir = Path(config['data_dir'])
 

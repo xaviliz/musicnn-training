@@ -93,7 +93,8 @@ if __name__ == '__main__':
     models = args.list
     config_file = Path(args.config_file)
 
-    config = json.load(open(config_file, "r"))
+    with open(config_file, "r") as f:
+        config = json.load(f)
     config_train = config['config_train']
     file_index = str(Path(config['data_dir'], 'index_repr.tsv'))
     exp_dir = config['exp_dir']
