@@ -4,7 +4,7 @@ import os
 from argparse import Namespace
 from pathlib import Path
 
-import librosa
+import essentia.standard as es
 import numpy as np
 import yaml
 from joblib import Parallel, delayed
@@ -17,36 +17,34 @@ from feature_ol3 import feature_ol3
 from feature_spleeter import feature_spleeter
 from feature_tempocnn import feature_tempocnn
 
-config_file = Namespace(**yaml.load(open('config_file.yaml'), Loader=yaml.SafeLoader))
-
 DEBUG = False
 
 
 def compute_audio_repr(audio_file, audio_repr_file, force=False):
     if not force:
         if os.path.exists(audio_repr_file):
-            print('{} exists. skipping!'.format(audio_file))
+            print('{} exists. skipping!'.format(audio_repr_file))
             return 0
 
-    if config['type'] == 'waveform':
-        audio, sr = librosa.load(audio_file, sr=config['resample_sr'])
+    if config['config_train']['feature_type'] == 'waveform':
+        audio = es.MonoLoader(
+            filename=audio_file, sampleRate=config['config_train']['feature_params']['resample_sr'])()
         audio_repr = audio
         audio_repr = np.expand_dims(audio_repr, axis=1)
-
-    elif config['feature_name'] == 'melspectrogram':
+    elif config['config_train']['feature_type'] == 'musicnn-melspectrogram':
         audio_repr = feature_melspectrogram_essentia(audio_file)
-    elif config['feature_name'] == 'vggish':
+    elif config['config_train']['feature_type'] == 'vggish-melspectrogram':
         audio_repr = feature_melspectrogram_vggish(audio_file)
-    elif config['feature_name'] == 'ol3':
+    elif config['config_train']['feature_type'] == 'ol3':
         audio_repr = feature_ol3(audio_file)
-    elif config['feature_name'] == 'spleeter':
+    elif config['config_train']['feature_type'] == 'spleeter':
         audio_repr = feature_spleeter(audio_file)
-    elif config['feature_name'] == 'tempocnn':
+    elif config['config_train']['feature_type'] == 'tempocnn':
         audio_repr = feature_tempocnn(audio_file)
-    elif config['feature_name'] == 'effnet_b0':
+    elif config['config_train']['feature_type'] == 'effnet_b0':
         audio_repr = feature_effnet_b0(audio_file)
     else:
-        raise Exception('Feature {} not implemented.'.format(config['type']))
+        raise Exception('Feature {} not implemented.'.format(config['config_train']['feature_type']))
 
     # Compute length
     length = audio_repr.shape[0]
@@ -69,13 +67,13 @@ def do_process(files, index):
         # compute audio representation (pre-processing)
         length = compute_audio_repr(audio_file, audio_repr_file)
         # index.tsv writing
-        fw = open(audio_representation_folder + "index_" + str(config['machine_i']) + ".tsv", "a")
-        fw.write("%s\t%s\t%s\n" % (id, audio_repr_file[len(config_file.DATA_FOLDER):], audio_file[len(config_file.DATA_FOLDER):]))
+        fw = open(audio_representation_dir / "index.tsv", "a")
+        fw.write("%s\t%s\t%s\n" % (id, audio_repr_file[len(config['data_dir']):], audio_file[len(config['data_dir']):]))
         fw.close()
         print(str(index) + '/' + str(len(files)) + ' Computed: %s' % audio_file)
 
     except Exception as e:
-        ferrors = open(audio_representation_folder + "errors" + str(config['machine_i']) + ".txt", "a")
+        ferrors = open(audio_representation_dir / "errors.txt", "a")
         ferrors.write(audio_file + "\n")
         ferrors.write(str(e))
         ferrors.close()
@@ -90,48 +88,32 @@ def process_files(files):
             do_process(files, index)
 
     else:
-        Parallel(n_jobs=config['num_processing_units'], prefer="threads")(
+        Parallel(n_jobs=config['config_preprocess']['num_processing_units'], prefer="threads")(
             delayed(do_process)(files, index) for index in range(0, len(files)))
 
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser()
-    parser.add_argument('feature_name', help='the feature type')
+    parser.add_argument('config_file', help='configuration file')
     args = parser.parse_args()
-    config = config_file.config_preprocess
-    feature_name = args.feature_name
-    config.update(config_file.config_preprocess[feature_name])
-    config['feature_name'] = feature_name
 
-    audio_representation_folder = config_file.config_train['audio_representation_folder']
+    config = json.load(open(args.config_file, "r"))
+
+    audio_representation_dir = Path(config['config_train']['audio_representation_dir'])
 
     # set audio representations folder
-    if not os.path.exists(audio_representation_folder):
-        os.makedirs(audio_representation_folder)
-    else:
-        print("WARNING: already exists a folder with this name!"
-              "\nThis is expected if you are splitting computations into different machines.."
-              "\n..because all these machines are writing to this folder. Otherwise, check your config_file!")
+    audio_representation_dir.mkdir(parents=True, exist_ok=True)
 
     # list audios to process: according to 'index_file'
     files_to_convert = []
-    f = open(config_file.DATA_FOLDER + config["index_audio_file"])
+    f = open(Path(config['data_dir'], config['config_preprocess']['index_audio_file']))
     for line in f.readlines():
         id, audio = line.strip().split("\t")
         audio_repr = audio[:audio.rfind(".")] + ".dat" # .npy or .pk
-        files_to_convert.append((id, config['audio_folder'] + audio,
-                                 audio_representation_folder + audio_repr))
+        files_to_convert.append((id, str(Path(config['config_preprocess']['audio_dir'], audio)),
+                                 str(audio_representation_dir / audio_repr)))
 
     # compute audio representation
-    if config['machine_i'] == config['n_machines'] - 1:
-        process_files(files_to_convert[int(len(files_to_convert) / config['n_machines']) * (config['machine_i']):])
-        # we just save parameters once! In the last thread run by n_machine-1!
-        json.dump(config, open(audio_representation_folder + "config.json", "w"))
-    else:
-        first_index = int(len(files_to_convert) / config['n_machines']) * (config['machine_i'])
-        second_index = int(len(files_to_convert) / config['n_machines']) * (config['machine_i'] + 1)
-        assigned_files = files_to_convert[first_index:second_index]
-        process_files(assigned_files)
+    process_files(files_to_convert)
 
-    print("Audio representation folder: " + audio_representation_folder)
+    print("Audio representation folder: ", audio_representation_dir)

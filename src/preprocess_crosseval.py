@@ -1,11 +1,8 @@
 import os
 from joblib import Parallel, delayed
 import argparse
-import pickle
 import numpy as np
 from pathlib import Path
-import yaml
-from argparse import Namespace
 from tqdm import tqdm
 
 from feature_melspectrogram_essentia import feature_melspectrogram_essentia
@@ -14,15 +11,10 @@ from feature_ol3 import feature_ol3
 from feature_spleeter import feature_spleeter
 from feature_tempocnn import feature_tempocnn
 
-
-config_file = Namespace(**yaml.load(open('config_file.yaml'),
-                                    Loader=yaml.SafeLoader))
-config = config_file.config_preprocess
-
-DEBUG = True
+DEBUG = False
 
 
-def compute_audio_repr(audio_file, audio_repr_file, lib, force=False):
+def compute_audio_repr(audio_file, audio_repr_file, feature_type, force=False):
     if not force:
         if os.path.exists(audio_repr_file):
             print('{} exists. skipping!'.format(audio_repr_file))
@@ -32,21 +24,20 @@ def compute_audio_repr(audio_file, audio_repr_file, lib, force=False):
     if not os.path.exists(base_dir):
         os.makedirs(base_dir)
 
-    if lib == 'essentia':
+    if feature_type == 'musicnn-melspectrogram':
         audio_repr = feature_melspectrogram_essentia(audio_file)
-    elif lib == 'vggish':
+    elif feature_type == 'vggish-melspectrogram':
         audio_repr = feature_melspectrogram_vggish(audio_file)
-    elif lib == 'ol3':
+    elif feature_type == 'ol3':
         audio_repr = feature_ol3(audio_file)
-    elif lib == 'spleeter':
+    elif feature_type == 'spleeter':
         audio_repr = feature_spleeter(audio_file)
-    elif lib == 'tempocnn':
+    elif feature_type == 'tempocnn':
         audio_repr = feature_tempocnn(audio_file)
     else:
         raise Exception('no signal processing lib defined!')
 
     # Compute length
-    print(audio_repr.shape)
     length = audio_repr.shape[0]
 
     # Transform to float16 (to save storage, and works the same)
@@ -60,19 +51,18 @@ def compute_audio_repr(audio_file, audio_repr_file, lib, force=False):
     return length
 
 
-def do_process(files, index, lib):
+def do_process(files, index, feature_type):
     try:
         [id, audio_file, audio_repr_file] = files[index]
         if not os.path.exists(audio_repr_file[:audio_repr_file.rfind('/') + 1]):
             path = Path(audio_repr_file[:audio_repr_file.rfind('/') + 1])
             path.mkdir(parents=True, exist_ok=True)
         # compute audio representation (pre-processing)
-        length = compute_audio_repr(audio_file, audio_repr_file, lib)
+        _ = compute_audio_repr(audio_file, audio_repr_file, feature_type)
         # index.tsv writing
         fw = open(os.path.join(metadata_dir, 'index.tsv'), 'a')
         fw.write("%s\t%s\n" % (id, audio_repr_file))
         fw.close()
-        print(str(index) + '/' + str(len(files)) + ' Computed: %s' % audio_file)
 
     except Exception as e:
         print('Error computing audio representation: ', audio_repr_file)
@@ -80,14 +70,13 @@ def do_process(files, index, lib):
         print(str(e))
 
 
-def process_files(files, lib):
+def process_files(files, feature_type, n_jobs):
     if DEBUG:
         print('WARNING: Parallelization is not used!')
         for index in tqdm(range(0, len(files))):
-            do_process(files, index, lib)
+            do_process(files, index, feature_type)
     else:
-        Parallel(n_jobs=config['num_processing_units'])(
-            delayed(do_process)(files, index, lib) for index in range(0, len(files)))
+        Parallel(n_jobs=n_jobs)(delayed(do_process)(files, index, feature_type) for index in range(0, len(files)))
 
 
 if __name__ == '__main__':
@@ -95,15 +84,27 @@ if __name__ == '__main__':
     parser.add_argument('index_file', help='index file')
     parser.add_argument('audio_dir', help='grountruth file')
     parser.add_argument('data_dir', help='grountruth file')
-    parser.add_argument('lib', help='dsp lib', choices=['essentia', 'librosa', 'vggish', 'ol3', 'spleeter', 'tempocnn'])
-
+    parser.add_argument('--feature-type', '-ft', default='musicnn-melspectrogram',
+                        choices=[
+                            'musicnn-melspectrogram',
+                            'vggish-melspectrogram',
+                            'musicnn',
+                            'vggish',
+                            'ol3',
+                            'tempocnn',
+                            'spleeter',
+                            'effnet_b0'
+                        ],
+                        help='input feature type')
+    parser.add_argument('--n-jobs', default=4, type=int,
+                        help='number of parallel jobs for feature extraction')
     args = parser.parse_args()
 
     index_file = args.index_file
     audio_dir = args.audio_dir
     data_dir = args.data_dir
-    lib = args.lib
-
+    feature_type = args.feature_type
+    n_jobs = args.n_jobs
 
     # set audio representations folder
     metadata_dir = os.path.join(data_dir, 'metadata')
@@ -129,4 +130,4 @@ if __name__ == '__main__':
 
         files_to_convert.append((id, src, tgt))
 
-    process_files(files_to_convert, lib)
+    process_files(files_to_convert, feature_type, n_jobs)
