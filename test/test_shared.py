@@ -35,3 +35,47 @@ def test_type_of_groundtruth():
     assert (
         shared.type_of_groundtruth(np.array([[0, 1], [1, 0]])) == "multiclass-indicator"
     )
+
+
+def test_compute_accuracy_multiclass():
+    y_pred = [
+        [0.2, 0.3, 0.5],  # fp 0, 0, 1
+        [0.8, 0.1, 0.1],  # tp 1, 0, 0
+        [0.4, 0.3, 0.3],  # fp 1, 0, 0
+        [0.2, 0.41, 0.39],  # tp 0, 1, 0
+        [0.25, 0.4, 0.35],  # fp 0, 1, 0
+        [0.2, 0.1, 0.7],  # tp 0, 0, 1
+    ]
+    y_true = [
+        [1, 0, 0],
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 1, 0],
+        [0, 0, 1],
+        [0, 0, 1],
+    ]
+
+    acc = shared.compute_accuracy(y_true, y_pred)
+    np.testing.assert_allclose(acc, 0.5)
+
+
+def test_compute_accuracy_multilabel():
+    y_pred_ml = [
+        [0.21, 0.31, 0.5],  # fp 0, 0, 1
+        [0.81, 0.71, 0.1],  # tp 1, 1, 0
+        [0.41, 0.31, 0.3],  # fp 1, 0, 0
+        [0.2, 0.51, 0.69],  # tp 0, 1, 1
+        [0.25, 0.4, 0.35],  # fp 0, 0, 0
+        [0.51, 0.15, 0.7],  # tp 0, 0, 1
+    ]
+    y_true_ml = [
+        [1, 1, 0],
+        [1, 1, 0],
+        [0, 1, 1],
+        [0, 1, 1],
+        [1, 0, 1],
+        [1, 0, 1],
+    ]
+
+    acc_multilabel = shared.compute_accuracy(y_true_ml, y_pred_ml)
+    np.testing.assert_allclose(acc_multilabel, 0.5)
