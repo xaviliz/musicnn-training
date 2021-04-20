@@ -77,10 +77,8 @@ if __name__ == '__main__':
     else:
         source_task = 'scratch'
 
-
     output_graph = os.path.join(exp_dir, '{}-{}-{}.pb'.format(config['dataset'], arch, source_task))
     print(output_graph)
-
 
     # tensorflow: define model and cost
     graph = tf.Graph()
@@ -96,7 +94,7 @@ if __name__ == '__main__':
 
         saver = tf.train.Saver()
 
-                # call training script
+        # call training script
         with open(exp_dir / 'experiment_id_whole') as f:
             model = f.read().rstrip()
         results_folder = str(exp_dir / 'experiments' / model) + '/'
@@ -133,8 +131,8 @@ if __name__ == '__main__':
                 input_before = 'model/max_pooling2d/MaxPool' if i == 1 else 'model/max_pooling2d_{}/MaxPool'.format(i)
 
                 gd = strip(gd, drop_scope, input_before,
-                        'model/{}CNN/Conv2D'.format(i + 1),
-                        'Placeholder_1')
+                           'model/{}CNN/Conv2D'.format(i + 1),
+                           'Placeholder_1')
             gd = strip(gd, 'model/dropout_4/Identity', 'model/flatten/Reshape', 'model/dense/MatMul', 'Placeholder_1')
 
         elif arch == 'musicnn':
@@ -143,14 +141,17 @@ if __name__ == '__main__':
 
                 # the dropout layers are connected after the 9th and 19th batch normalization layers.
                 bn_i = i + 9
-                input_before = 'model/batch_normalization/batchnorm/add_1' if bn_i == 0 else 'model/batch_normalization_{}/batchnorm/add_1'.format(bn_i)
+                if bn_i == 0:
+                    input_before = 'model/batch_normalization/batchnorm/add_1'
+                else:
+                    input_before = 'model/batch_normalization_{}/batchnorm/add_1'.format(bn_i)
                 output_after = 'model/dense/MatMul' if i == 0 else 'model/dense_{}/MatMul'.format(i)
                 gd = strip(gd, drop_scope, input_before, output_after, 'Placeholder_1')
 
         elif arch == 'vggish':
             pass
         else:
-            raise Exception('Source task not found in "{}"'.format(config['config_train']['load_model']))
+            raise ValueError('Source task not found in "{}"'.format(config['config_train']['load_model']))
 
         # Remove unnecessary nodes
         # 'model/Placeholder_1' was used on train time to specify train/eval status
@@ -165,9 +166,9 @@ if __name__ == '__main__':
         tf.import_graph_def(subgraph)
 
         output_graph_def = tf.graph_util.convert_variables_to_constants(
-                sess, # The session is used to retrieve the weights
-                gd, # The graph_def is used to retrieve the nodes
-                node_names  #.split(",")   # The output node names are used to select the usefull nodes
-            )
+            sess,  # The session is used to retrieve the weights
+            gd,  # The graph_def is used to retrieve the nodes
+            node_names  # .split(",")   # The output node names are used to select the usefull nodes
+        )
         tf.io.write_graph(output_graph_def, '.', output_graph, as_text=False)
         sess.close()
