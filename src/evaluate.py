@@ -125,5 +125,4 @@ if __name__ == '__main__':
         predictions_file = Path(
             exp_dir, f"predictions_{config_train['fold']}.json")
 
-        store_results(results_file, predictions_file,
-                      models, ids, y_pred, metrics)
+        store_results(results_file, predictions_file, models, ids, y_pred, metrics)
