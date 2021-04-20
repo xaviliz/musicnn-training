@@ -276,7 +276,7 @@ if __name__ == '__main__':
 
         else:
             # save model weights to disk
-            save_path = saver.save(sess, str(model_folder) + '/')  # TF needs this tailing `/`
+            save_path = saver.save(sess, str(model_folder) + '/')  # TF needs this trailing `/`
             print('Epoch %d, train cost %g, '
                   'val cost %g, '
                   'epoch-time %gs, lr %g, time-stamp %s - [BEST MODEL]'
