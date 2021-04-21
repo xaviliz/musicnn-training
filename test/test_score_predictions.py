@@ -9,21 +9,21 @@ def test_get_metrics():
         [0.2, 0.41, 0.39],
         [0.2, 0.1, 0.7],
         [0.8, 0.1, 0.1],
-        [0.4, 0.3, 0.3],
+        [0.7, 0.6, 0.3],
     ]
     groundtruth_0 = [
         [1, 0, 0],
         [0, 1, 0],
         [0, 0, 1],
         [1, 0, 0],
-        [0, 1, 0],
+        [1, 1, 0],
     ]
     predicted_1 = [
         [0.4, 0.1, 0.5],
         [0.2, 0.21, 0.59],
         [0.1, 0.1, 0.8],
         [0.1, 0.1, 0.8],
-        [0.5, 0.2, 0.3],
+        [0.6, 0.7, 0.3],
     ]
     groundtruth_1 = [
         [0, 1, 1],
@@ -42,12 +42,10 @@ def test_get_metrics():
     fold_pred = [predicted_0, predicted_1]
     fold_gt = [groundtruth_0, groundtruth_1]
 
-    roc_auc, pr_auc, acc, accs, report = get_metrics(
+    roc_auc, roc_auc_std, pr_auc, pr_auc_std, acc, acc_std, report = get_metrics(
         y_true, y_pred, fold_gt, fold_pred, n_folds=2
     )
-    acc_std = np.std(accs)
-    assert len(accs) == 2
-    np.testing.assert_allclose(acc, 0.2)
-    np.testing.assert_allclose(acc_std, (1 / 3))
+    np.testing.assert_allclose(acc, 0.4)
+    np.testing.assert_allclose(acc_std, 0.2)
     assert not np.isnan(roc_auc)
     assert not np.isnan(pr_auc)
