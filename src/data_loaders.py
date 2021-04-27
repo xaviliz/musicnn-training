@@ -87,13 +87,13 @@ def data_gen_standard(id, audio_repr_path, gt, pack):
 
 
 def data_gen_feature_combination(id, audio_repr_path, gt, pack):
-        # Support both the absolute and relative path input cases
-        config, sampling, param_sampling = pack
-        audio_repr_paths = [Path(p, audio_repr_path)
-                            for p in config['audio_representation_dirs']]
+    # Support both the absolute and relative path input cases
+    config, sampling, param_sampling = pack
+    audio_repr_paths = [Path(p, audio_repr_path)
+                        for p in config['audio_representation_dirs']]
 
-        yInputs = [config['features_params'][i]['yInput']
-                   for i in range(len(config['features_params']))]
+    yInputs = [config['features_params'][i]['yInput']
+               for i in range(len(config['features_params']))]
 
     try:
         float_nums = [path.stat().st_size // 2 for path in audio_repr_paths]
