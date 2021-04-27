@@ -72,3 +72,4 @@ config_train:
   fold: %(fold)s
   seed: %(seed)s
   coupling_layer_units : 100  # units of the first layer after the TL embeddings. 0 to omit a coupling layer
+  is_multilabel_task: %(is_multilabel_task)s
