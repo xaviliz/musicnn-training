@@ -91,13 +91,25 @@ if __name__ == '__main__':
 
     np.random.seed(seed=config['seed'])
 
+    if 'audio_representation_dirs' in config:
+        feature_combination = True
+    else:
+        feature_combination = False
+
     # set patch parameters
     config['xInput'] = config['feature_params']['xInput']
-    config['yInput'] = config['feature_params']['yInput']
+
+    if feature_combination:
+        config['yInput'] = sum([i['yInput'] for i in config['features_params']])
+    else:
+        config['yInput'] = config['feature_params']['yInput']
 
     # get the data loader
     print('Loading data generator for regular training')
-    from data_loaders import data_gen_standard as data_gen
+    if feature_combination:
+        from data_loaders import data_gen_feature_combination as data_gen
+    else:
+        from data_loaders import data_gen_standard as data_gen
 
     # load audio representation paths
     file_index = data_dir / 'index_repr.tsv'

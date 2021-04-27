@@ -84,3 +84,67 @@ def data_gen_standard(id, audio_repr_path, gt, pack):
     except Exception as ex:
         print('"{}" failed'.format(audio_repr_path))
         print(repr(ex))
+
+
+def data_gen_feature_combination(id, audio_repr_path, gt, pack):
+        # Support both the absolute and relative path input cases
+        config, sampling, param_sampling = pack
+        audio_repr_paths = [Path(p, audio_repr_path)
+                            for p in config['audio_representation_dirs']]
+
+        yInputs = [config['features_params'][i]['yInput']
+                   for i in range(len(config['features_params']))]
+
+    try:
+        float_nums = [path.stat().st_size // 2 for path in audio_repr_paths]
+
+        # get the number of frames for each represention. Ideally they should be identical,
+        # but different analysis parameters may result in slight differences.
+        frames_nums = np.array([n // yInputs[i] for i, n in enumerate(float_nums)])
+
+        frames_range = frames_nums.max() - frames_nums.min()
+        assert frames_range < 10, ('The number of frames for at least one of the features '
+                                   f'is too diverging: {frames_range}')
+
+        # use the shortest feature as reference
+        frames_num = min(frames_nums)
+
+        # let's deliver some data!
+        if sampling == 'random':
+            for i in range(0, param_sampling):
+                random_frame_offset = random.randint(
+                    0, frames_num - config['xInput'])
+
+                x = np.hstack([read_mmap(path,
+                                         config['xInput'],
+                                         yInputs[i],
+                                         frames_num,
+                                         single_patch=True,
+                                         offset=random_frame_offset * yInputs[i] * 2,
+                                         compression=config['feature_params']['compression']
+                                         ) for i, path in enumerate(audio_repr_paths)]
+                              )
+                yield {
+                    'X': x,
+                    'Y': gt,
+                    'ID': id
+                }
+
+        elif sampling == 'overlap_sampling':
+            x = np.hstack([read_mmap(path,
+                                     config['xInput'],
+                                     yInputs[i],
+                                     frames_num,
+                                     compression=config['feature_params']['compression']
+                                     ) for i, path in enumerate(audio_repr_paths)]
+                          )
+            last_frame = int(x.shape[0]) - int(config['xInput']) + 1
+            for time_stamp in range(0, last_frame, param_sampling):
+                yield {
+                    'X': x[time_stamp: time_stamp + config['xInput'], :],
+                    'Y': gt,
+                    'ID': id
+                }
+    except Exception as ex:
+        print('"{}" failed'.format(audio_repr_path))
+        print(repr(ex))

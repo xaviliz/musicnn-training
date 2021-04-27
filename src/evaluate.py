@@ -8,7 +8,6 @@ tf.disable_v2_behavior()
 from tqdm import tqdm
 import pescador
 
-from data_loaders import data_gen_standard as data_gen
 import train
 import shared
 
@@ -107,8 +106,22 @@ if __name__ == '__main__':
         print('Experiment: ' + str(model))
         print('\n' + str(config))
 
+        feature_combination = True if 'audio_representation_dirs' in config_train else False
+
+        # set patch parameters
         config_train['xInput'] = config_train['feature_params']['xInput']
-        config_train['yInput'] = config_train['feature_params']['yInput']
+
+        if feature_combination:
+            config_train['yInput'] = sum([i['yInput'] for i in config_train['features_params']])
+        else:
+            config_train['yInput'] = config_train['feature_params']['yInput']
+
+        # get the data loader
+        print('Loading data generator for regular training')
+        if feature_combination:
+            from data_loaders import data_gen_feature_combination as data_gen
+        else:
+            from data_loaders import data_gen_standard as data_gen
 
         # load ground truth
         print('groundtruth file: {}'.format(config_train['gt_test']))

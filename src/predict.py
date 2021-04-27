@@ -9,7 +9,6 @@ import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
 
 import train
-from data_loaders import data_gen_standard as data_gen
 from tqdm import tqdm
 
 TEST_BATCH_SIZE = 64
@@ -43,6 +42,15 @@ if __name__ == '__main__':
     parser.add_argument('data_dir')
     parser.add_argument('predictions_file')
     parser.add_argument('-l', '--list', nargs='+', help='List of models to evaluate', required=True)
+    parser.add_argument(
+        '--data-dirs',
+        nargs='+',
+        help=(
+            'a list of directories containing feature (.dat) files. '
+            'The first one would be consdired the main feature. '
+            'This list should contain the same number of elements as `--feature-type`.'
+        )
+    )
 
     args = parser.parse_args()
     models = args.list
@@ -52,9 +60,18 @@ if __name__ == '__main__':
     data_dir = args.data_dir
     predictions_file = args.predictions_file
 
+    feature_combination = True if data_dir == 'multiple_directories' else False
+
+    if feature_combination:
+        from data_loaders import data_gen_feature_combination as data_gen
+        data_dirs = args.data_dirs
+        data_dir = data_dirs[0]
+    else:
+        from data_loaders import data_gen_standard as data_gen
+
     # load all audio representation paths
     [_, id2audio_repr_path] = shared.load_id2path(index_file)
-    id2audio_repr_path = {k: os.path.join(data_dir, v) for k, v in id2audio_repr_path.items()}
+    id2audio_repr_path = {k: v for k, v in id2audio_repr_path.items()}
 
     index_ids = set(id2audio_repr_path.keys())
 
@@ -69,6 +86,11 @@ if __name__ == '__main__':
     for model in models:
         experiment_folder = os.path.join(model_dir, str(model))
         config = json.load(open(os.path.join(experiment_folder, 'config.json')))
+
+        if feature_combination:
+            config['audio_representation_dirs'] = data_dirs
+        else:
+            config['audio_representation_dir'] = data_dir
 
         print('Experiment: ' + str(model))
         print('\n' + str(config))
