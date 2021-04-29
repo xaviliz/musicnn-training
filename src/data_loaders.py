@@ -104,7 +104,7 @@ def data_gen_feature_combination(id, audio_repr_path, gt, pack):
 
         frames_range = frames_nums.max() - frames_nums.min()
         assert frames_range < 10, ('The number of frames for at least one of the features '
-                                   f'is too diverging: {frames_range}')
+                                   f'is too diverging: {frames_nums}')
 
         # use the shortest feature as reference
         frames_num = min(frames_nums)
