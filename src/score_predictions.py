@@ -1,12 +1,14 @@
 import argparse
 import json
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from pathlib import Path
 
 import numpy as np
 from sklearn.metrics import classification_report
 
 import shared
+
+Score = namedtuple('Score', ['mean', 'std'])
 
 
 def score_predictions(args):
@@ -52,18 +54,16 @@ def score_predictions(args):
         fold_pred.append([predictions[k] for k in keys])
         fold_gt.append([groundtruth[k] for k in keys])
 
-    roc_auc, roc_auc_std, pr_auc, pr_auc_std, acc, acc_std, report = get_metrics(
+    (roc_auc_score, pr_auc_score, macro_acc_score, micro_acc, report) = get_metrics(
         y_true, y_pred, fold_gt, fold_pred, n_folds
     )
 
     store_results(
         results_file,
-        roc_auc,
-        roc_auc_std,
-        pr_auc,
-        pr_auc_std,
-        acc,
-        acc_std,
+        roc_auc_score,
+        pr_auc_score,
+        macro_acc_score,
+        micro_acc,
         report,
         dataset,
     )
@@ -98,29 +98,40 @@ def get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds):
         y_pred_argmax = np.argmax(y_pred, axis=1)
         report = classification_report(y_true_argmax, y_pred_argmax)
 
-    return roc_auc, roc_auc_std, pr_auc, pr_auc_std, micro_acc, acc_std, report
+    roc_auc_score = Score(roc_auc, roc_auc_std)
+    pr_auc_score = Score(pr_auc, pr_auc_std)
+    macro_acc_score = Score(macro_acc, acc_std)
+    return roc_auc_score, pr_auc_score, macro_acc_score, micro_acc, report
 
 
 def store_results(
-    output_file, roc_auc, roc_auc_std, pr_auc, pr_auc_std, acc, acc_std, report, dataset
+    output_file,
+    roc_auc_score,
+    pr_auc_score,
+    macro_acc_score,
+    micro_acc,
+    report,
+    dataset,
 ):
     # print experimental results
-    print('ROC-AUC: ' + str(roc_auc))
-    print('PR-AUC: ' + str(pr_auc))
-    print('Balanced Acc: ' + str(acc))
-    print('Balanced Acc STD: ' + str(acc_std))
+    print('ROC-AUC: ' + str(roc_auc_score.mean))
+    print('PR-AUC: ' + str(pr_auc_score.mean))
+    print('Balanced Micro Acc: ' + str(micro_acc))
+    print('Balanced Macro Acc: ' + str(macro_acc_score.mean))
+    print('Balanced Acc STD: ' + str(macro_acc_score.std))
     print('latext format:')
-    print('{:.2f}\\pm{:.2f}'.format(acc, acc_std))
+    print('{:.2f}\\pm{:.2f}'.format(micro_acc, macro_acc_score.std))
     print('-' * 20)
 
     # store experimental results
     with open(output_file, 'w') as to:
-        to.write('\nROC AUC: ' + str(roc_auc))
-        to.write('\nStD: ' + str(roc_auc))
-        to.write('\nPR AUC: ' + str(pr_auc))
-        to.write('\nStD: ' + str(pr_auc))
-        to.write('\nAcc: ' + str(acc))
-        to.write('\nStD: ' + str(acc_std))
+        to.write('\nROC AUC: ' + str(roc_auc_score.mean))
+        to.write('\nStD: ' + str(roc_auc_score.std))
+        to.write('\nPR AUC: ' + str(pr_auc_score.mean))
+        to.write('\nStD: ' + str(pr_auc_score.std))
+        to.write('\nAcc Micro: ' + str(micro_acc))
+        to.write('\nAcc Macro: ' + str(macro_acc_score.mean))
+        to.write('\nStD: ' + str(macro_acc_score.std))
         to.write('\n')
         to.write('Report:\n')
         to.write('{}\n'.format(report))
@@ -135,12 +146,13 @@ def store_results(
 
     with open(output_summary, 'w+') as fp:
         data[dataset] = defaultdict(dict)
-        data[dataset]['Accuracy']['mean'] = acc
-        data[dataset]['Accuracy']['std'] = acc_std
-        data[dataset]['ROC AUC']['mean'] = roc_auc
-        data[dataset]['ROC AUC']['std'] = roc_auc_std
-        data[dataset]['PR AUC']['mean'] = pr_auc
-        data[dataset]['PR AUC']['std'] = pr_auc_std
+        data[dataset]['Accuracy Micro']['mean'] = micro_acc
+        data[dataset]['Accuracy Macro']['mean'] = macro_acc_score.mean
+        data[dataset]['Accuracy']['std'] = macro_acc_score.std
+        data[dataset]['ROC AUC']['mean'] = roc_auc_score.mean
+        data[dataset]['ROC AUC']['std'] = roc_auc_score.std
+        data[dataset]['PR AUC']['mean'] = pr_auc_score.mean
+        data[dataset]['PR AUC']['std'] = pr_auc_score.std
 
         json.dump(data, fp, indent=4)
 
