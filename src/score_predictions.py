@@ -54,7 +54,7 @@ def score_predictions(args):
         fold_pred.append([predictions[k] for k in keys])
         fold_gt.append([groundtruth[k] for k in keys])
 
-    (roc_auc_score, pr_auc_score, macro_acc_score, micro_acc, report) = get_metrics(
+    roc_auc_score, pr_auc_score, macro_acc_score, micro_acc, report = get_metrics(
         y_true, y_pred, fold_gt, fold_pred, n_folds
     )
 
