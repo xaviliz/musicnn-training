@@ -90,7 +90,7 @@ def get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds):
 
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
-    if shared.type_of_groundtruth(y_true):
+    if shared.type_of_groundtruth(y_true) == "multilabel-indicator":
         y_pred_indicator = np.round(y_pred)
         report = classification_report(y_true, y_pred_indicator)
     else:
