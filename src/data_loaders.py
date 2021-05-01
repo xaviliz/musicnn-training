@@ -145,6 +145,5 @@ def data_gen_feature_combination(id, audio_repr_path, gt, pack):
                     'Y': gt,
                     'ID': id
                 }
-    except Exception as ex:
-        print('"{}" failed'.format(audio_repr_path))
-        print(repr(ex))
+    except FileNotFoundError:
+        print('"{}" not found'.format(audio_repr_path))
