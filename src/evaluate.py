@@ -106,7 +106,7 @@ if __name__ == '__main__':
         print('Experiment: ' + str(model))
         print('\n' + str(config))
 
-        feature_combination = True if 'audio_representation_dirs' in config_train else False
+        feature_combination = 'audio_representation_dirs' in config_train
 
         # set patch parameters
         config_train['xInput'] = config_train['feature_params']['xInput']
