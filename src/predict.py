@@ -60,7 +60,7 @@ if __name__ == '__main__':
     data_dir = args.data_dir
     predictions_file = args.predictions_file
 
-    feature_combination = True if data_dir == 'multiple_directories' else False
+    feature_combination = data_dir == 'multiple_directories'
 
     if feature_combination:
         from data_loaders import data_gen_feature_combination as data_gen
