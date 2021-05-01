@@ -32,14 +32,17 @@ def prediction(config, experiment_folder, id2audio_repr_path, id2gt, ids):
         saver = tf.train.Saver()
         saver.restore(sess, str(experiment_folder) + '/')
 
-        pred_array, id_array = np.empty([0, num_classes_dataset]), np.empty(0)
+        pred_list, id_list = [], []
         for batch in tqdm(batch_streamer):
             pred, _ = sess.run([normalized_y, cost], feed_dict={x: batch['X'], y_: batch['Y'], is_train: False})
             # make sure our predictions are in a numpy
             # array with the proper shape
             pred = np.array(pred).reshape(-1, num_classes_dataset)
-            pred_array = np.vstack([pred_array, pred])
-            id_array = np.hstack([id_array, batch['ID']])
+            pred_list.append(pred)
+            id_list.append(batch['ID'])
+
+        pred_array = np.vstack(pred_list)
+        id_array = np.hstack(id_list)
 
         sess.close()
 
