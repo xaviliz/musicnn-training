@@ -39,7 +39,6 @@ def read_mmap(audio_repr_path, x, y, frames_num, single_patch=False, offset=0, c
 
 
 def data_gen_standard(id, audio_repr_path, gt, pack):
-    # Support both the absolute and relative path input cases
     config, sampling, param_sampling = pack
     audio_repr_path = Path(config['audio_representation_dir'], audio_repr_path)
 
@@ -86,7 +85,6 @@ def data_gen_standard(id, audio_repr_path, gt, pack):
 
 
 def data_gen_feature_combination(id, audio_repr_path, gt, pack):
-    # Support both the absolute and relative path input cases
     config, sampling, param_sampling = pack
     audio_repr_paths = [Path(p, audio_repr_path)
                         for p in config['audio_representation_dirs']]
