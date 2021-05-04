@@ -1,5 +1,4 @@
 import numpy as np
-import random
 import os
 from pathlib import Path
 
@@ -49,8 +48,10 @@ def data_gen_standard(id, audio_repr_path, gt, pack):
         # let's deliver some data!
         if sampling == 'random':
             for i in range(0, param_sampling):
-                random_frame_offset = random.randint(
-                    0, frames_num - config['xInput'])
+                random_uniform = np.random.random()
+                random_frame_offset = round(
+                    random_uniform * (frames_num - config['xInput']))
+
                 # idx * bands * bytes per float
                 offset = random_frame_offset * config['yInput'] * 2
                 yield {
@@ -109,8 +110,9 @@ def data_gen_feature_combination(id, audio_repr_path, gt, pack):
         # let's deliver some data!
         if sampling == 'random':
             for i in range(0, param_sampling):
-                random_frame_offset = random.randint(
-                    0, frames_num - config['xInput'])
+                random_uniform = np.random.random()
+                random_frame_offset = round(
+                    random_uniform * (frames_num - config['xInput']))
 
                 x = np.hstack([read_mmap(path,
                                          config['xInput'],

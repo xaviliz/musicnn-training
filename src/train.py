@@ -248,6 +248,11 @@ if __name__ == '__main__':
 
     for i in range(config['epochs']):
         # training: do not train first epoch, to see random weights behaviour
+
+        # modify the seed number on every epoch so that we get different patches
+        # from each track
+        np.random.seed(seed=config['seed'] + i)
+
         start_time = time.time()
         array_train_cost = []
         if i != 0:
