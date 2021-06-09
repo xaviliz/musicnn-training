@@ -89,7 +89,13 @@ if __name__ == '__main__':
 
         config_train = config['config_train']
         config_train['xInput'] = config_train['feature_params']['xInput']
-        config_train['yInput'] = config_train['feature_params']['yInput']
+
+        feature_combination = 'audio_representation_dirs' in config_train
+
+        if feature_combination:
+            config_train['yInput'] = sum([i['yInput'] for i in config_train['features_params']])
+        else:
+            config_train['yInput'] = config_train['feature_params']['yInput']
 
         [x, y_, is_train, y, normalized_y, cost, model_vars] = train.tf_define_model_and_cost_freeze(config_train)
         sess.run(tf.global_variables_initializer())
