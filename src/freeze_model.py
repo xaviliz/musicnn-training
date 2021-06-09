@@ -54,7 +54,9 @@ if __name__ == '__main__':
     config = json.load(open((exp_dir / 'config_whole.json').resolve()))
 
     # get the architecture
-    if config['config_train']['model_number'] == 2:
+    if config['config_train']['model_number'] == 0:
+        arch = 'mlp'
+    elif config['config_train']['model_number'] == 2:
         arch = 'vgg'
     elif config['config_train']['model_number'] == 11:
         arch = 'musicnn'
@@ -75,7 +77,7 @@ if __name__ == '__main__':
             print('"{}" does not contain the name of a known source task.'.format(config['config_train']['load_model']))
             source_task = 'unknown'
     else:
-        source_task = 'scratch'
+        source_task = '__'.join(config['config_train']['features_type'])
 
     output_graph = os.path.join(exp_dir, '{}-{}-{}.pb'.format(config['dataset'], arch, source_task))
     print(output_graph)
@@ -150,6 +152,10 @@ if __name__ == '__main__':
 
         elif arch == 'vggish':
             pass
+
+        elif arch == 'mlp':
+            pass
+
         else:
             raise ValueError('Source task not found in "{}"'.format(config['config_train']['load_model']))
 
