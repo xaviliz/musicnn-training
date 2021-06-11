@@ -1,50 +1,25 @@
 import argparse
 import json
 import os
-from argparse import Namespace
 from pathlib import Path
 
 import essentia.standard as es
 import numpy as np
-import yaml
 from joblib import Parallel, delayed
 from tqdm import tqdm
 
-from feature_effnet_b0 import feature_effnet_b0
-from feature_melspectrogram_essentia import feature_melspectrogram_essentia
-from feature_melspectrogram_vggish import feature_melspectrogram_vggish
-from feature_ol3 import feature_ol3
-from feature_spleeter import feature_spleeter
-from feature_tempocnn import feature_tempocnn
+from feature_melspectrogram import MelSpectrogramMusiCNN, MelSpectrogramVGGish
 
 DEBUG = False
 
 
-def compute_audio_repr(audio_file, audio_repr_file, force=False):
+def compute_audio_repr(audio_file, audio_repr_file, extractor, force=False):
     if not force:
-        if os.path.exists(audio_repr_file):
+        if audio_repr_file.exists():
             print('{} exists. skipping!'.format(audio_repr_file))
             return 0
 
-    if config['config_train']['feature_type'] == 'waveform':
-        audio = es.MonoLoader(
-            filename=audio_file, sampleRate=config['config_train']['feature_params']['resample_sr'])()
-        audio_repr = audio
-        audio_repr = np.expand_dims(audio_repr, axis=1)
-    elif config['config_train']['feature_type'] == 'musicnn-melspectrogram':
-        audio_repr = feature_melspectrogram_essentia(audio_file)
-    elif config['config_train']['feature_type'] == 'vggish-melspectrogram':
-        audio_repr = feature_melspectrogram_vggish(audio_file)
-    elif config['config_train']['feature_type'] == 'ol3':
-        audio_repr = feature_ol3(audio_file)
-    elif config['config_train']['feature_type'] == 'spleeter':
-        audio_repr = feature_spleeter(audio_file)
-    elif config['config_train']['feature_type'] == 'tempocnn':
-        audio_repr = feature_tempocnn(audio_file)
-    elif config['config_train']['feature_type'] == 'effnet_b0':
-        audio_repr = feature_effnet_b0(audio_file)
-    else:
-        raise Exception('Feature {} not implemented.'.format(config['config_train']['feature_type']))
+    audio_repr = extractor.compute(audio_file)
 
     # Compute length
     length = audio_repr.shape[0]
@@ -58,17 +33,18 @@ def compute_audio_repr(audio_file, audio_repr_file, force=False):
     del fp
     return length
 
-def do_process(files, index):
+
+def do_process(files, index, extractor, audio_representation_dir):
     try:
         [id, audio_file, audio_repr_file] = files[index]
-        if not os.path.exists(audio_repr_file[:audio_repr_file.rfind('/') + 1]):
-            path = Path(audio_repr_file[:audio_repr_file.rfind('/') + 1])
-            path.mkdir(parents=True, exist_ok=True)
+
+        audio_repr_file = Path(audio_repr_file)
+        audio_repr_file.parent.mkdir(parents=True, exist_ok=True)
         # compute audio representation (pre-processing)
-        length = compute_audio_repr(audio_file, audio_repr_file)
+        compute_audio_repr(audio_file, audio_repr_file, extractor)
         # index.tsv writing
         fw = open(audio_representation_dir / "index.tsv", "a")
-        fw.write("%s\t%s\t%s\n" % (id, audio_repr_file[len(config['data_dir']):], audio_file[len(config['data_dir']):]))
+        fw.write("%s\t%s\n" % (id, audio_repr_file.relative_to(audio_representation_dir)))
         fw.close()
         print(str(index) + '/' + str(len(files)) + ' Computed: %s' % audio_file)
 
@@ -81,15 +57,44 @@ def do_process(files, index):
         print(str(e))
 
 
-def process_files(files):
+def process_files(files, audio_representation_dir, feature_type=None, n_jobs=None, config=None):
+
+    assert (feature_type and n_jobs) or config, "At least one shoud be provided."
+
+    # it not provided explicitly read it from the config
+    if not feature_type:
+        feature_type = config['config_train']['feature_type']
+    if not n_jobs:
+        n_jobs = config['config_preprocess']['num_processing_units']
+
+    if feature_type == 'waveform':
+        extractor = None
+    elif feature_type == 'musicnn-melspectrogram':
+        extractor = MelSpectrogramMusiCNN()
+    elif feature_type == 'vggish-melspectrogram':
+        extractor = MelSpectrogramVGGish()
+
+    # import only the feature extractors that we need. This is because for the spectrogram
+    # features `essentia` but the embeddings require `essentia-tensorflow`
+    elif feature_type in ('effnet_b0', 'musicnn', 'openl3', 'tempocnn', 'vggish', 'yamnet'):
+        from feature_embeddings import EmbeddingFromMelSpectrogram
+        extractor = EmbeddingFromMelSpectrogram(feature_type)
+
+    elif feature_type == 'spleeter':
+        from feature_embeddings import EmbeddingFromWaveform
+        extractor = EmbeddingFromWaveform(feature_type)
+
+    else:
+        raise NotImplementedError('Feature {} not implemented.'.format(feature_type))
+
     if DEBUG:
         print('WARNING: Parallelization is not used!')
         for index in tqdm(range(0, len(files))):
-            do_process(files, index)
+            do_process(files, index, extractor, audio_representation_dir)
 
     else:
-        Parallel(n_jobs=config['config_preprocess']['num_processing_units'], prefer="threads")(
-            delayed(do_process)(files, index) for index in range(0, len(files)))
+        Parallel(n_jobs=n_jobs, prefer="threads")(
+            delayed(do_process)(files, index, extractor, audio_representation_dir) for index in range(0, len(files)))
 
 
 if __name__ == '__main__':
@@ -114,6 +119,6 @@ if __name__ == '__main__':
                                  str(audio_representation_dir / audio_repr)))
 
     # compute audio representation
-    process_files(files_to_convert)
+    process_files(files_to_convert, audio_representation_dir, config=config)
 
     print("Audio representation folder: ", audio_representation_dir)
