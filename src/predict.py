@@ -15,7 +15,7 @@ TEST_BATCH_SIZE = 64
 
 
 def prediction(batch_dispatcher, tf_vars):
-    pred_array, id_array = [], []
+    pred_list, id_list = [], []
 
     [sess, normalized_y, cost, x, y_, is_train] = tf_vars
     for batch in tqdm(batch_dispatcher):
@@ -23,11 +23,11 @@ def prediction(batch_dispatcher, tf_vars):
                                                             y_: batch['Y'],
                                                             is_train: False})
 
-        id_array.append(batch['ID'])
-        pred_array.append(pred)
+        id_list.append(batch['ID'])
+        pred_list.append(pred)
 
-    id_array = np.hstack(id_array)
-    pred_array = np.vstack(pred_array)
+    id_array = np.hstack(id_list)
+    pred_array = np.vstack(pred_list)
 
     print('predictions', pred_array.shape)
     return pred_array, id_array
