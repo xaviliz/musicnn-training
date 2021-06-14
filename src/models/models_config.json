@@ -1,5 +1,5 @@
 {
-    "effnet": {
+    "effnet_b0": {
         "filename": "210303-145359_dev-multi-node.pb",
         "input_type": "mel_musicnn",
         "input": "melspectrogram",
