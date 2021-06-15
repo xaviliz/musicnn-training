@@ -10,8 +10,6 @@ from tqdm import tqdm
 
 from feature_melspectrogram import MelSpectrogramMusiCNN, MelSpectrogramVGGish
 
-DEBUG = False
-
 
 def compute_audio_repr(audio_file, audio_repr_file, extractor, force=False):
     if not force:
@@ -57,15 +55,13 @@ def do_process(files, index, extractor, audio_representation_dir):
         print(str(e))
 
 
-def process_files(files, audio_representation_dir, feature_type=None, n_jobs=None, config=None):
+def process_files(files, audio_representation_dir, feature_type=None, config=None):
 
-    assert (feature_type and n_jobs) or config, "At least one shoud be provided."
+    assert feature_type or config, "At least one shoud be provided."
 
     # it not provided explicitly read it from the config
     if not feature_type:
         feature_type = config['config_train']['feature_type']
-    if not n_jobs:
-        n_jobs = config['config_preprocess']['num_processing_units']
 
     if feature_type == 'waveform':
         extractor = None
@@ -87,14 +83,8 @@ def process_files(files, audio_representation_dir, feature_type=None, n_jobs=Non
     else:
         raise NotImplementedError('Feature {} not implemented.'.format(feature_type))
 
-    if DEBUG:
-        print('WARNING: Parallelization is not used!')
-        for index in tqdm(range(0, len(files))):
-            do_process(files, index, extractor, audio_representation_dir)
-
-    else:
-        Parallel(n_jobs=n_jobs, prefer="threads")(
-            delayed(do_process)(files, index, extractor, audio_representation_dir) for index in range(0, len(files)))
+    for index in tqdm(range(0, len(files))):
+        do_process(files, index, extractor, audio_representation_dir)
 
 
 if __name__ == '__main__':

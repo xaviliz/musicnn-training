@@ -22,15 +22,12 @@ if __name__ == '__main__':
                             'yamnet'
                         ],
                         help='input feature type')
-    parser.add_argument('--n-jobs', default=1, type=int,
-                        help='number of parallel jobs for feature extraction')
     args = parser.parse_args()
 
     index_file = args.index_file
     audio_dir = Path(args.audio_dir)
     data_dir = Path(args.data_dir)
     feature_type = args.feature_type
-    n_jobs = args.n_jobs
 
     # set audio representations folder
     data_dir.mkdir(exist_ok=True, parents=True)
@@ -49,4 +46,4 @@ if __name__ == '__main__':
 
         files_to_convert.append((id, src, tgt))
 
-    process_files(files_to_convert, data_dir, feature_type=feature_type, n_jobs=n_jobs)
+    process_files(files_to_convert, data_dir, feature_type=feature_type)
