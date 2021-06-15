@@ -23,7 +23,7 @@ config_preprocess:
     n_mels: 64
     resample_sr: 16000
     type: melspectrogram
-  ol3:
+  openl3:
     hop: 12000
     n_fft: 2048
     n_mels: 128
