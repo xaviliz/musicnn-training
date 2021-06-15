@@ -13,7 +13,9 @@ from tqdm import tqdm
 
 TEST_BATCH_SIZE = 64
 
-def prediction(batch_dispatcher, tf_vars, array_cost, pred_array, id_array):
+
+def prediction(batch_dispatcher, tf_vars):
+    array_cost, pred_array, id_array = [], [], []
     [sess, normalized_y, cost, x, y_, is_train] = tf_vars
     for batch in tqdm(batch_dispatcher):
         pred, _ = sess.run([normalized_y, cost], feed_dict={x: batch['X'],
@@ -114,8 +116,7 @@ if __name__ == '__main__':
             saver.restore(sess, results_folder)
             tf_vars = [sess, normalized_y, cost, x, y_, is_train]
 
-            array_cost, pred_array, id_array = [], [], []
-            array_cost, pred_array, id_array = prediction(batch_streamer, tf_vars, array_cost, pred_array, id_array)
+            array_cost, pred_array, id_array = prediction(batch_streamer, tf_vars)
             sess.close()
 
     print('Predictions computed, now evaluating..')
