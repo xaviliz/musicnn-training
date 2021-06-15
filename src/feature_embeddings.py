@@ -11,23 +11,20 @@ from feature_melspectrogram import (
     MelSpectrogramOpenL3,
 )
 
-FILE_PATH = Path(__file__).parent.resolve()
-MODELS_PATH = "models/"
-BATCH_SIZE = 60
-
 
 class EmbeddingFromMelSpectrogram:
-    def __init__(self, model_type, hop_time=1):
+    def __init__(self, model_type, hop_time=1, batch_size=60, models_path='models/'):
         self.model_type = model_type
         self.hop_time = hop_time
-        self.batch_size = BATCH_SIZE
+        self.batch_size = batch_size
+        self.models_path = models_path
 
-        with open(Path(MODELS_PATH, "models_config.json"), "r") as config_file:
+        with open(Path(self.models_path, "models_config.json"), "r") as config_file:
             config = json.load(config_file)
         self.config = config[self.model_type]
 
         self.graph_filename = self.config["filename"]
-        self.graph_path = Path(MODELS_PATH, self.graph_filename)
+        self.graph_path = Path(self.models_path, self.graph_filename)
 
         self.x_size = self.config["x_size"]
         self.y_size = self.config["y_size"]
