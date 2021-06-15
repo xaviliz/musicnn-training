@@ -56,7 +56,7 @@ class EmbeddingFromMelSpectrogram:
         else:
             hop_size_samples = int(self.hop_time * self.seconds_to_patches)
 
-        batch = self.melspectrogram_to_batch(mel_spectrogram, hop_size_samples)
+        batch = self.__melspectrogram_to_batch(mel_spectrogram, hop_size_samples)
 
         pool = Pool()
         embeddings = []
@@ -70,7 +70,7 @@ class EmbeddingFromMelSpectrogram:
 
         return np.vstack(embeddings)
 
-    def melspectrogram_to_batch(self, melspectrogram, hop_time):
+    def __melspectrogram_to_batch(self, melspectrogram, hop_time):
         npatches = int(np.ceil((melspectrogram.shape[0] - self.x_size) / hop_time) + 1)
         batch = np.zeros([npatches, self.x_size, self.y_size], dtype="float32")
         for i in range(npatches):
