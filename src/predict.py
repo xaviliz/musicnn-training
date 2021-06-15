@@ -16,17 +16,16 @@ TEST_BATCH_SIZE = 64
 def prediction(batch_dispatcher, tf_vars, array_cost, pred_array, id_array):
     [sess, normalized_y, cost, x, y_, is_train] = tf_vars
     for batch in tqdm(batch_dispatcher):
-        pred, cost_pred = sess.run([normalized_y, cost], feed_dict={x: batch['X'],
-                                                                    y_: batch['Y'],
-                                                                    is_train: False})
+        pred, _ = sess.run([normalized_y, cost], feed_dict={x: batch['X'],
+                                                            y_: batch['Y'],
+                                                            is_train: False})
 
-        if not array_cost:  # if array_cost is empty, is the first iteration
-            pred_array = pred
-            id_array = batch['ID']
-        else:
-            pred_array = np.concatenate((pred_array,pred), axis=0)
-            id_array = np.append(id_array,batch['ID'])
-        array_cost.append(cost_pred)
+        id_array.append(batch['ID'])
+        pred_array.append(pred)
+
+    id_array = np.hstack(id_array)
+    pred_array = np.vstack(pred_array)
+
     print('predictions', pred_array.shape)
     print('cost', np.mean(array_cost))
     return array_cost, pred_array, id_array
