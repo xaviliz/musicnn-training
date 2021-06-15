@@ -65,6 +65,9 @@ if __name__ == '__main__':
     else:
         raise ValueError('Model number not found ({})'.format(config['config_train']['model_number']))
 
+    config_train = config['config_train']
+    feature_combination = 'audio_representation_dirs' in config_train
+
     # get the source task from the model name
     if config['config_train']['load_model']:
         if 'MSD' in config['config_train']['load_model']:
@@ -77,7 +80,10 @@ if __name__ == '__main__':
             print('"{}" does not contain the name of a known source task.'.format(config['config_train']['load_model']))
             source_task = 'unknown'
     else:
-        source_task = '__'.join(config['config_train']['features_type'])
+        if feature_combination:
+            source_task = '__'.join(config['config_train']['features_type'])
+        else:
+            source_task = config['config_train']['feature_type']
 
     output_graph = os.path.join(exp_dir, '{}-{}-{}.pb'.format(config['dataset'], arch, source_task))
     print(output_graph)
@@ -87,10 +93,7 @@ if __name__ == '__main__':
     with graph.as_default():
         sess = tf.Session()
 
-        config_train = config['config_train']
         config_train['xInput'] = config_train['feature_params']['xInput']
-
-        feature_combination = 'audio_representation_dirs' in config_train
 
         if feature_combination:
             config_train['yInput'] = sum([i['yInput'] for i in config_train['features_params']])
