@@ -15,7 +15,7 @@ TEST_BATCH_SIZE = 64
 
 
 def prediction(batch_dispatcher, tf_vars):
-    array_cost, pred_array, id_array = [], [], []
+    pred_array, id_array = [], []
     [sess, normalized_y, cost, x, y_, is_train] = tf_vars
     for batch in tqdm(batch_dispatcher):
         pred, _ = sess.run([normalized_y, cost], feed_dict={x: batch['X'],
@@ -29,8 +29,7 @@ def prediction(batch_dispatcher, tf_vars):
     pred_array = np.vstack(pred_array)
 
     print('predictions', pred_array.shape)
-    print('cost', np.mean(array_cost))
-    return array_cost, pred_array, id_array
+    return pred_array, id_array
 
 
 if __name__ == '__main__':
@@ -116,7 +115,7 @@ if __name__ == '__main__':
             saver.restore(sess, results_folder)
             tf_vars = [sess, normalized_y, cost, x, y_, is_train]
 
-            array_cost, pred_array, id_array = prediction(batch_streamer, tf_vars)
+            pred_array, id_array = prediction(batch_streamer, tf_vars)
             sess.close()
 
     print('Predictions computed, now evaluating..')
