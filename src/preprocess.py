@@ -1,11 +1,8 @@
 import argparse
 import json
-import os
 from pathlib import Path
 
-import essentia.standard as es
 import numpy as np
-from joblib import Parallel, delayed
 from tqdm import tqdm
 
 from feature_melspectrogram import MelSpectrogramMusiCNN, MelSpectrogramVGGish
