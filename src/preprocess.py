@@ -77,6 +77,10 @@ def process_files(files, audio_representation_dir, feature_type=None, config=Non
         from feature_embeddings import EmbeddingFromWaveform
         extractor = EmbeddingFromWaveform(feature_type)
 
+    elif feature_type == 'jukebox':
+        from feature_jukebox import Jukebox
+        extractor = Jukebox()
+
     else:
         raise NotImplementedError('Feature {} not implemented.'.format(feature_type))
 

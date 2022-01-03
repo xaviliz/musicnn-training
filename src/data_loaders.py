@@ -97,12 +97,21 @@ def data_gen_feature_combination(id, audio_repr_path, gt, pack):
     yInputs = [config['features_params'][i]['yInput']
                for i in range(len(config['features_params']))]
 
+    # a bool indicating if the embeddings have timestamps or not
+    isTemporal = [config['features_params'][i]['isTemporal']
+                  for i in range(len(config['features_params']))]
+
     try:
         float_nums = [path.stat().st_size // 2 for path in audio_repr_paths]
 
         # get the number of frames for each represention. Ideally they should be identical,
         # but different analysis parameters may result in slight differences.
         frames_nums = np.array([n // yInputs[i] for i, n in enumerate(float_nums)])
+
+        if len(frames_nums) > 1:
+            for i in range(len(config['features_params'])):
+                if not isTemporal[i]:
+                    frames_nums = np.delete(frames_nums, i)
 
         frames_range = frames_nums.max() - frames_nums.min()
         assert frames_range < 10, ('The number of frames for at least one of the features '
@@ -125,9 +134,9 @@ def data_gen_feature_combination(id, audio_repr_path, gt, pack):
                 x = np.hstack([read_mmap(path,
                                          config['xInput'],
                                          yInputs[i],
-                                         frames_num,
+                                         frames_num if isTemporal[i] else 1,
                                          single_patch=True,
-                                         offset=random_frame_offset * yInputs[i] * 2,
+                                         offset= random_frame_offset * yInputs[i] * 2 if isTemporal[i] else 0,
                                          compression=config['feature_params']['compression']
                                          ) for i, path in enumerate(audio_repr_paths)]
                               )
@@ -138,13 +147,19 @@ def data_gen_feature_combination(id, audio_repr_path, gt, pack):
                 }
 
         elif sampling == 'overlap_sampling':
-            x = np.hstack([read_mmap(path,
-                                     config['xInput'],
-                                     yInputs[i],
-                                     frames_num,
-                                     compression=config['feature_params']['compression']
-                                     ) for i, path in enumerate(audio_repr_paths)]
-                          )
+            x = [
+                read_mmap(
+                    path,
+                    config['xInput'],
+                    yInputs[i],
+                    frames_num if isTemporal[i] else 1,
+                    compression=config['feature_params']['compression']
+                ) for i, path in enumerate(audio_repr_paths)
+            ]
+            for i, istemp in enumerate(isTemporal):
+                if not istemp:
+                    x[i] = np.tile(x[i], (frames_num, 1))
+            x = np.hstack(x)
             last_frame = int(x.shape[0]) - int(config['xInput']) + 1
             for time_stamp in range(0, last_frame, param_sampling):
                 yield {
