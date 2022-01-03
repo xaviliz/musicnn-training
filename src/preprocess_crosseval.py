@@ -19,7 +19,8 @@ if __name__ == '__main__':
                             'tempocnn',
                             'spleeter',
                             'effnet_b0',
-                            'yamnet'
+                            'yamnet',
+                            'jukebox',
                         ],
                         help='input feature type')
     args = parser.parse_args()
