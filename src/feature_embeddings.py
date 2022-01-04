@@ -34,19 +34,27 @@ class EmbeddingFromMelSpectrogram:
 
         self.seconds_to_patches = self.config["seconds_to_patches"]
 
-        if self.model_type in ("musicnn", "effnet_b0"):
+        if self.model_type in ("musicnn", "effnet_b0", "effnet_b0_3M"):
             self.mel_extractor = MelSpectrogramMusiCNN()
         elif self.model_type in ("vggish", "yamnet"):
             self.mel_extractor = MelSpectrogramVGGish()
         elif self.model_type == "openl3":
             self.mel_extractor = MelSpectrogramOpenL3(hop_time=self.hop_time)
 
-        self.model = TensorflowPredict(
-            graphFilename=str(self.graph_path),
-            inputs=[self.input_layer],
-            outputs=[self.output_layer],
-            squeeze=self.config["squeeze"],
-        )
+        model_format = "savedModel" if self.model_type == "effnet_b0_3M" else "graphFilename"
+        params = {
+            "inputs": [self.input_layer],
+            "outputs": [self.output_layer],
+            "squeeze": self.config["squeeze"],
+            model_format: str(self.graph_path),
+        }
+
+        self.model = TensorflowPredict(**params)
+
+        # For now we don't know how to convert EffNet from Pytorch to TensorFlow with
+        # dynamic (i.e., arbitrary) batch size.
+        if self.model_type == "effnet_b0_3M":
+            self.batch_size = 1
 
     def compute(self, audio_file):
         mel_spectrogram = self.mel_extractor.compute(audio_file)

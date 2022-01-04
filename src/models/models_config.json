@@ -11,6 +11,18 @@
         "squeeze": true,
         "permutation": null
     },
+    "effnet_b0_3M": {
+        "filename": "effnetb0-3M",
+        "input_type": "mel_musicnn",
+        "input": "serving_default_melspectrogram",
+        "embeddings": "PartitionedCall:1",
+        "activations": "PartitionedCall:0",
+        "x_size": 128,
+        "y_size": 96,
+        "seconds_to_patches": 62.5,
+        "squeeze": true,
+        "permutation": null
+    },
     "musicnn": {
         "filename": "msd-musicnn-1.pb",
         "input_type": "mel_musicnn",
