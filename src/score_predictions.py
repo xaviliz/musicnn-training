@@ -54,19 +54,24 @@ def score_predictions(args):
         fold_pred.append([predictions[k] for k in keys])
         fold_gt.append([groundtruth[k] for k in keys])
 
-    roc_auc_score, pr_auc_score, macro_acc_score, micro_acc, report = get_metrics(
-        y_true, y_pred, fold_gt, fold_pred, n_folds
-    )
+    if config['config_train']['is_regression_task']:
+        pass
+        # TODO: get regression metrics
+        # TODO: store regression results
+    else:
+        roc_auc_score, pr_auc_score, macro_acc_score, micro_acc, report = get_metrics(
+            y_true, y_pred, fold_gt, fold_pred, n_folds
+        )
 
-    store_results(
-        results_file,
-        roc_auc_score,
-        pr_auc_score,
-        macro_acc_score,
-        micro_acc,
-        report,
-        dataset,
-    )
+        store_results(
+            results_file,
+            roc_auc_score,
+            pr_auc_score,
+            macro_acc_score,
+            micro_acc,
+            report,
+            dataset,
+        )
 
 
 def get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds):

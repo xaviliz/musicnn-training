@@ -3,6 +3,7 @@ from ast import literal_eval
 from datetime import datetime
 
 import numpy as np
+from scipy.stats import pearsonr
 from sklearn import metrics
 from sklearn.utils.multiclass import type_of_target
 
@@ -176,3 +177,76 @@ def compute_accuracy(y_true, y_pred):
         y_pred = np.round(np.squeeze(y_pred))
 
     return metrics.balanced_accuracy_score(y_true, y_pred)
+
+
+def compute_pearsonr_correlation(y_true, y_pred):
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+
+    print(f'computing correlation of {len(y_true)} elements')
+
+    return pearsonr(y_true, y_pred)
+
+
+def compute_ccc(y_true, y_pred, axis=0):
+
+    print(f'computing Concordance Correlation Coefficient of {len(y_true)} elements')
+
+    # Concordance Correlation Coefficient (CCC)
+    x_mean = np.mean(y_true, axis=axis)
+    y_mean = np.mean(y_pred, axis=axis)
+
+    x_var = np.var(y_true, axis=axis)
+    y_var = np.var(y_pred, axis=axis)
+
+    cov = np.mean((y_true - x_mean) * (y_pred - y_mean))
+
+    numerator = 2 * cov
+
+    denominator = x_var + y_var + (x_mean - y_mean) ** 2
+
+    return numerator / denominator
+
+
+# R2 score
+def compute_custom_r2_score(y_true, y_pred):
+
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+
+    ss_residual = np.sum(np.square(y_true - y_pred))
+    ss_total = np.sum(
+        np.square(y_true - np.mean(y_true))
+    )
+    r_squared = 1.0 - np.nan_to_num(ss_residual/ss_total)
+    return r_squared
+
+def compute_sklearn_r2_score(y_test, y_pred):
+    return metrics.r2_score(y_test, y_pred)
+
+
+# Adjusted R2 score
+def compute_custom_adjusted_r2_score(y_test, y_pred, p):
+
+    # p refers to the number of features in each prediction (200 in effnet model)
+    r_squared = compute_custom_r2_score(y_test, y_pred)
+
+    adjusted_r_squared = 1.0 - (
+        (1.0 - r_squared) * (len(y_test) - 1.0) / (len(y_test) - p - 1.0)
+    )
+
+    return adjusted_r_squared
+
+def compute_root_mean_squared_error(y_true, y_pred):
+
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+
+    return metrics.mean_squared_error(y_true, y_pred, squared=True)
+
+def compute_mean_squared_error(y_true, y_pred):
+
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+
+    return metrics.mean_squared_error(y_true, y_pred, squared=False)
