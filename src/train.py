@@ -47,6 +47,8 @@ def model_and_cost(config, is_train):
 
         if config['is_multilabel_task']:
             normalized_y = tf.nn.sigmoid(y)
+        elif config['is_regression_task']:
+            normalized_y = tf.identity(y)
         else:
             normalized_y = tf.nn.softmax(y)
         print(normalized_y.get_shape())
@@ -57,6 +59,8 @@ def model_and_cost(config, is_train):
     with tf.name_scope('metrics'):
         if config['is_multilabel_task']:
             cost = tf.losses.sigmoid_cross_entropy(y_, y)
+        elif config['is_regression_task']:
+            cost = tf.losses.mean_squared_error(y_, y)
         else:
             # if you use softmax_cross_entropy be sure that the output of your model has linear units!
             cost = tf.losses.softmax_cross_entropy(y_, y)
