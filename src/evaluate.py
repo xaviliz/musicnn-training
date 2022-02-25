@@ -58,19 +58,16 @@ def prediction(config, experiment_folder, id2audio_repr_path, id2gt, ids, is_reg
 
         metrics = (roc_auc, pr_auc, acc)
     else:
-        # TODO: fix pearsonr, adjusted_r2 and accuracy
-        #pearson_corr = shared.compute_pearsonr_correlation(y_true, y_pred)
+        # accuracy is only used for classification tasks
+        pearson_corr = shared.compute_pearson_correlation(y_true, y_pred)
         ccc = shared.compute_ccc(y_true, y_pred)
-        custom_r2 = shared.compute_custom_r2_score(y_true, y_pred)
-        sklearn_r2 = shared.compute_sklearn_r2_score(y_true, y_pred)
-        #custom_adjusted_r2 = shared.compute_custom_adjusted_r2_score(y_true, y_pred)
-        #acc = shared.compute_accuracy(y_true, y_pred)
+        r2_score = shared.compute_r2_score(y_true, y_pred)
+        adjusted_r2_score = shared.compute_adjusted_r2_score(y_true, y_pred, 2)
         rmse = shared.compute_root_mean_squared_error(y_true, y_pred)
         mse = shared.compute_mean_squared_error(y_true, y_pred)
 
-        metrics = (ccc, custom_r2, sklearn_r2, rmse, mse)
+        metrics = (pearson_corr, ccc, r2_score, adjusted_r2_score, rmse, mse)
 
-    # TODO: fix how to handle with metrics
     return y_pred, metrics, healthy_ids
 
 
@@ -79,21 +76,23 @@ def store_results(results_file, predictions_file, models, ids, y_pred, metrics, 
     results_file.parent.mkdir(exist_ok=True, parents=True)
 
     if is_regression_task:
-        ccc, custom_r2, sklearn_r2, rmse, mse = metrics
+        pearson_corr, ccc, r2_score, adjusted_r2_score, rmse, mse = metrics
 
         # print experimental results
         print('Metrics:')
-        print('CCC: ' + str(ccc))
-        print('R2(CUSTOM): ' + str(custom_r2))
-        print('R2(SKLEARN): ' + str(sklearn_r2))
-        print('RMSE: ' + str(rmse))
-        print('MSE: ' + str(mse))
+        print(f'PEARSONR: {pearson_corr}')
+        print(f'CCC: {ccc}')
+        print(f'R2 SCORE: {r2_score}')
+        print(f'ADJUSTED R2 SCORE: {adjusted_r2_score}')
+        print(f'RMSE: {rmse}')
+        print(f'MSE: {mse}')
 
         to = open(results_file, 'w')
         to.write('Experiment: ' + str(models))
+        to.write('\PEARSONR: ' + str(pearson_corr))
         to.write('\nCCC: ' + str(ccc))
-        to.write('\nR2(CUSTOM): ' + str(custom_r2))
-        to.write('\nR2(SKLEARN): ' + str(sklearn_r2))
+        to.write('\nR2 SCORE: ' + str(r2_score))
+        to.write('\nADJUSTED R2 SCORE: ' + str(adjusted_r2_score))
         to.write('\nRMSE: ' + str(rmse))
         to.write('\nMSE: ' + str(mse))
         to.write('\n')

@@ -179,13 +179,16 @@ def compute_accuracy(y_true, y_pred):
     return metrics.balanced_accuracy_score(y_true, y_pred)
 
 
-def compute_pearsonr_correlation(y_true, y_pred):
-    y_true = np.array(y_true)
-    y_pred = np.array(y_pred)
+def compute_pearson_correlation(y_true, y_pred, axis=0):
+    print(f'computing Pearson Correlation Coefficient of {len(y_true)} elements')
 
-    print(f'computing correlation of {len(y_true)} elements')
+    mx = np.mean(y_true,axis=axis)
+    my = np.mean(y_pred,axis=axis)
+    xm, ym = y_true - mx, y_pred - my
+    r_num = np.mean(xm * ym, axis=axis)
+    r_den = np.std(xm, axis=axis) * np.std(ym, axis=axis)
 
-    return pearsonr(y_true, y_pred)
+    return r_num / r_den
 
 
 def compute_ccc(y_true, y_pred, axis=0):
@@ -209,44 +212,38 @@ def compute_ccc(y_true, y_pred, axis=0):
 
 
 # R2 score
-def compute_custom_r2_score(y_true, y_pred):
+def compute_r2_score(y_true, y_pred, axis=0):
 
+    print(f'computing R2 Score of {len(y_true)} elements')
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
 
-    ss_residual = np.sum(np.square(y_true - y_pred))
+    ss_residual = np.sum(np.square(y_true - y_pred), axis=0)
     ss_total = np.sum(
-        np.square(y_true - np.mean(y_true))
+        np.square(y_true - np.mean(y_true)), axis=0
     )
     r_squared = 1.0 - np.nan_to_num(ss_residual/ss_total)
     return r_squared
 
-def compute_sklearn_r2_score(y_test, y_pred):
-    return metrics.r2_score(y_test, y_pred)
-
 
 # Adjusted R2 score
-def compute_custom_adjusted_r2_score(y_test, y_pred, p):
-
-    # p refers to the number of features in each prediction (200 in effnet model)
-    r_squared = compute_custom_r2_score(y_test, y_pred)
-
-    adjusted_r_squared = 1.0 - (
-        (1.0 - r_squared) * (len(y_test) - 1.0) / (len(y_test) - p - 1.0)
-    )
-
+def compute_adjusted_r2_score(y_true, y_pred, p):
+    # p refers to the number of predictors (i.e for arousal and valence p=2)
+    print(f'computing Adjusted R2 Score of {len(y_true)} elements')
+    r_squared = compute_r2_score(y_true, y_pred)
+    adjusted_r_squared = 1 - (1 - r_squared) * (len(y_true) - 1.0) / (len(y_true) - p - 1.0)
     return adjusted_r_squared
 
-def compute_root_mean_squared_error(y_true, y_pred):
 
+def compute_root_mean_squared_error(y_true, y_pred):
+    print(f'computing Root Mean Squared Error of {len(y_true)} elements')
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
+    return metrics.mean_squared_error(y_true, y_pred, multioutput="raw_values", squared=True)
 
-    return metrics.mean_squared_error(y_true, y_pred, squared=True)
 
 def compute_mean_squared_error(y_true, y_pred):
-
+    print(f'computing Mean Squared Error of {len(y_true)} elements')
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
-
-    return metrics.mean_squared_error(y_true, y_pred, squared=False)
+    return metrics.mean_squared_error(y_true, y_pred, multioutput="raw_values", squared=False)
