@@ -32,8 +32,9 @@ if __name__ == '__main__':
     feature_type = args.feature_type
 
     # set audio representations folder
-    data_dir.mkdir(exist_ok=True, parents=True)
-    fw = open(data_dir / 'index.tsv', "w")
+    metadata_dir = data_dir / "metadata"
+    metadata_dir.mkdir(exist_ok=True, parents=True)
+    fw = open(metadata_dir / 'index.tsv', "w")
     fw.write('')
     fw.close()
 
