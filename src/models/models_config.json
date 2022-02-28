@@ -12,7 +12,7 @@
         "permutation": null
     },
     "effnet_b0_3M": {
-        "filename": "effnetb0-3M",
+        "filename": "discogs-effnet-bs64-1.pb",
         "input_type": "mel_musicnn",
         "input": "serving_default_melspectrogram",
         "embeddings": "PartitionedCall:1",
