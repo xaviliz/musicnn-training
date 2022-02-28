@@ -54,7 +54,9 @@ def score_predictions(args):
         fold_pred.append([predictions[k] for k in keys])
         fold_gt.append([groundtruth[k] for k in keys])
 
-    if config['config_train']['is_regression_task']:
+    if config['config_train']['task_type'] == "regression":
+        print(shared.type_of_groundtruth(y_true))
+        raise ValueError("Regression metrics are not stored yet!!!")
         pass
         # TODO: get regression metrics
         # TODO: store regression results
@@ -75,38 +77,41 @@ def score_predictions(args):
 
 
 def get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds):
-    micro_acc = shared.compute_accuracy(y_true, y_pred)
-    accs = []
-    roc_aucs, pr_aucs = [], []
-    for i in range(n_folds):
-        y_true_fold = fold_gt[i]
-        y_pred_fold = fold_pred[i]
-        accs.append(shared.compute_accuracy(y_true_fold, y_pred_fold))
-        roc_auc_i, pr_auc_i = shared.compute_auc(y_true_fold, y_pred_fold)
-        roc_aucs.append(roc_auc_i)
-        pr_aucs.append(pr_auc_i)
-
-    macro_acc = np.mean(accs)
-    print("Macro Acc:", macro_acc)
-    print("Micro Acc:", micro_acc)
-    acc_std = np.std(accs)
-    roc_auc, pr_auc = np.mean(roc_aucs), np.mean(pr_aucs)
-    roc_auc_std, pr_auc_std = np.std(roc_aucs), np.std(pr_aucs)
-
-    y_true = np.array(y_true)
-    y_pred = np.array(y_pred)
-    if shared.type_of_groundtruth(y_true) == "multilabel-indicator":
-        y_pred_indicator = np.round(y_pred)
-        report = classification_report(y_true, y_pred_indicator)
+    if shared.type_of_groundtruth(y_true) == "continuous-multioutput":    # regression
+        pass
     else:
-        y_true_argmax = np.argmax(y_true, axis=1)
-        y_pred_argmax = np.argmax(y_pred, axis=1)
-        report = classification_report(y_true_argmax, y_pred_argmax)
+        micro_acc = shared.compute_accuracy(y_true, y_pred)
+        accs = []
+        roc_aucs, pr_aucs = [], []
+        for i in range(n_folds):
+            y_true_fold = fold_gt[i]
+            y_pred_fold = fold_pred[i]
+            accs.append(shared.compute_accuracy(y_true_fold, y_pred_fold))
+            roc_auc_i, pr_auc_i = shared.compute_auc(y_true_fold, y_pred_fold)
+            roc_aucs.append(roc_auc_i)
+            pr_aucs.append(pr_auc_i)
 
-    roc_auc_score = Score(roc_auc, roc_auc_std)
-    pr_auc_score = Score(pr_auc, pr_auc_std)
-    macro_acc_score = Score(macro_acc, acc_std)
-    return roc_auc_score, pr_auc_score, macro_acc_score, micro_acc, report
+        macro_acc = np.mean(accs)
+        print("Macro Acc:", macro_acc)
+        print("Micro Acc:", micro_acc)
+        acc_std = np.std(accs)
+        roc_auc, pr_auc = np.mean(roc_aucs), np.mean(pr_aucs)
+        roc_auc_std, pr_auc_std = np.std(roc_aucs), np.std(pr_aucs)
+
+        y_true = np.array(y_true)
+        y_pred = np.array(y_pred)
+        if shared.type_of_groundtruth(y_true) == "multilabel-indicator":
+            y_pred_indicator = np.round(y_pred)
+            report = classification_report(y_true, y_pred_indicator)
+        else:
+            y_true_argmax = np.argmax(y_true, axis=1)
+            y_pred_argmax = np.argmax(y_pred, axis=1)
+            report = classification_report(y_true_argmax, y_pred_argmax)
+
+        roc_auc_score = Score(roc_auc, roc_auc_std)
+        pr_auc_score = Score(pr_auc, pr_auc_std)
+        macro_acc_score = Score(macro_acc, acc_std)
+        return roc_auc_score, pr_auc_score, macro_acc_score, micro_acc, report
 
 
 def store_results(
