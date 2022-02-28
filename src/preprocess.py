@@ -54,7 +54,7 @@ def do_process(files, index, extractor, audio_representation_dir):
 
 def process_files(files, audio_representation_dir, feature_type=None, config=None):
 
-    assert feature_type or config, "At least one shoud be provided."
+    assert feature_type or config, "At least one should be provided."
 
     # it not provided explicitly read it from the config
     if not feature_type:
