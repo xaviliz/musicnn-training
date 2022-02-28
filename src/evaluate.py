@@ -89,7 +89,7 @@ def store_results(results_file, predictions_file, models, ids, y_pred, metrics, 
 
         to = open(results_file, 'w')
         to.write('Experiment: ' + str(models))
-        to.write('\PEARSONR: ' + str(pearson_corr))
+        to.write('\nPEARSONR: ' + str(pearson_corr))
         to.write('\nCCC: ' + str(ccc))
         to.write('\nR2 SCORE: ' + str(r2_score))
         to.write('\nADJUSTED R2 SCORE: ' + str(adjusted_r2_score))
@@ -147,7 +147,7 @@ if __name__ == '__main__':
         print('\n' + str(config))
 
         feature_combination = 'audio_representation_dirs' in config_train
-        is_regression_task = config['config_train']['is_regression_task']
+        is_regression_task = config['config_train']['task_type'] == "regression"
 
         # set patch parameters
         config_train['xInput'] = config_train['feature_params']['xInput']

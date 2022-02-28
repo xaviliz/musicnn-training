@@ -45,9 +45,9 @@ def model_and_cost(config, is_train):
 
         y = classification_heads.regular(y, config)
 
-        if config['is_multilabel_task']:
+        if config['task_type'] == "multilabel":
             normalized_y = tf.nn.sigmoid(y)
-        elif config['is_regression_task']:
+        elif config['task_type'] == "regression":
             normalized_y = tf.identity(y)
         else:
             normalized_y = tf.nn.softmax(y)
@@ -57,9 +57,9 @@ def model_and_cost(config, is_train):
 
     # tensorflow: define cost function
     with tf.name_scope('metrics'):
-        if config['is_multilabel_task']:
+        if config['task_type'] == "multilabel":
             cost = tf.losses.sigmoid_cross_entropy(y_, y)
-        elif config['is_regression_task']:
+        elif config['task_type'] == "regression":
             cost = tf.losses.mean_squared_error(y_, y)
         else:
             # if you use softmax_cross_entropy be sure that the output of your model has linear units!
@@ -168,7 +168,7 @@ if __name__ == '__main__':
             train_step = optimizer.minimize(cost)
 
     sess = tf.InteractiveSession()
-    tf.keras.backend.set_session(sess)
+    tf.compat.v1.keras.backend.set_session(sess)
 
     print('\nEXPERIMENT: ', str(experiment_id))
     print('-----------------------------------')
