@@ -19,6 +19,7 @@ if __name__ == '__main__':
                             'tempocnn',
                             'spleeter',
                             'effnet_b0',
+                            'effnet_b0_3M',
                             'yamnet',
                             'jukebox',
                         ],
