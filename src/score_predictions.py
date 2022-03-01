@@ -54,32 +54,86 @@ def score_predictions(args):
         fold_pred.append([predictions[k] for k in keys])
         fold_gt.append([groundtruth[k] for k in keys])
 
-    if config['config_train']['task_type'] == "regression":
-        print(shared.type_of_groundtruth(y_true))
-        raise ValueError("Regression metrics are not stored yet!!!")
-        pass
-        # TODO: get regression metrics
-        # TODO: store regression results
+    task_type = config['config_train']['task_type']
+    scores, micro, report = get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds, task_type)
+
+    store_results(
+        results_file,
+        scores,
+        micro,
+        report,
+        dataset,
+        task_type,
+    )
+
+
+def get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds, task_type):
+
+    if task_type == "regression":
+        # shared.type_of_groundtruth(y_true) == "continuous-multioutput":    # regression
+
+        # compute micro metrics
+        micro = {}
+        micro["p_corr"] = shared.compute_pearson_correlation(y_true, y_pred)
+        micro["ccc"] = shared.compute_ccc(y_true, y_pred)
+        micro["r2"] = shared.compute_r2_score(y_true, y_pred)
+        micro["adjusted_r2"] = shared.compute_adjusted_r2_score(y_true, y_pred, np.shape(y_true)[1])
+        micro["rmse"] = shared.compute_root_mean_squared_error(y_true, y_pred)
+
+        p_corrs = []
+        cccs = []
+        r2s = []
+        adjusted_r2s = []
+        rmses = []
+        for i in range(n_folds):
+            y_true_fold = fold_gt[i]
+            y_pred_fold = fold_pred[i]
+            p_corrs.append(shared.compute_pearson_correlation(y_true_fold, y_pred_fold))
+            cccs.append(shared.compute_ccc(y_true_fold, y_pred_fold))
+            r2s.append(shared.compute_r2_score(y_true_fold, y_pred_fold))
+            adjusted_r2s.append(shared.compute_adjusted_r2_score(y_true_fold, y_pred_fold, np.shape(y_true)[1]))
+            rmses. append(shared.compute_root_mean_squared_error(y_true_fold, y_pred_fold))
+
+        # compute pearson correlation
+        macro_p_corr = np.mean(p_corrs, axis=0)
+        print("Macro Pearson Corr:", macro_p_corr)
+        print("Micro Pearson Corr:", micro["p_corr"])
+
+        # compute ccc
+        macro_ccc = np.mean(cccs, axis=0)
+        print("Macro CCC:", macro_ccc)
+        print("Micro CCC:", micro["ccc"])
+
+        # compute r2 score
+        macro_r2 = np.mean(r2s, axis=0)
+        print("Macro R2:", macro_r2)
+        print("Micro R2:", micro["r2"])
+
+        # compute adjusted r2 score
+        macro_adjusted_r2 = np.mean(adjusted_r2s, axis=0)
+        print("Macro Adjusted R2:", macro_adjusted_r2)
+        print("Micro Adjusted R2:", micro["adjusted_r2"])
+
+        # compute RMSE
+        macro_rmse = np.mean(rmses, axis=0)
+        print("Macro RMSE:", macro_rmse)
+        print("Micro RMSE:", micro["rmse"])
+
+        p_corr_std, ccc_std = np.std(p_corrs, axis=0), np.std(cccs, axis=0)
+        r2_std, adjusted_r2_std = np.std(r2s, axis=0), np.std(adjusted_r2s, axis=0)
+        rmse_std = np.std(rmses, axis=0)
+
+        #! classification report is only available for classification tasks
+
+        p_corr_score = Score(macro_p_corr, p_corr_std)
+        ccc_score = Score(macro_ccc, ccc_std)
+        r2_score = Score(macro_r2, r2_std)
+        adjusted_r2_score = Score(macro_adjusted_r2, adjusted_r2_std)
+        rmse_score = Score(macro_rmse, rmse_std)
+        scores = (p_corr_score, ccc_score, r2_score, adjusted_r2_score, rmse_score)
+        report = None
     else:
-        roc_auc_score, pr_auc_score, macro_acc_score, micro_acc, report = get_metrics(
-            y_true, y_pred, fold_gt, fold_pred, n_folds
-        )
-
-        store_results(
-            results_file,
-            roc_auc_score,
-            pr_auc_score,
-            macro_acc_score,
-            micro_acc,
-            report,
-            dataset,
-        )
-
-
-def get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds):
-    if shared.type_of_groundtruth(y_true) == "continuous-multioutput":    # regression
-        pass
-    else:
+        # for classification tasks
         micro_acc = shared.compute_accuracy(y_true, y_pred)
         accs = []
         roc_aucs, pr_aucs = [], []
@@ -111,40 +165,84 @@ def get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds):
         roc_auc_score = Score(roc_auc, roc_auc_std)
         pr_auc_score = Score(pr_auc, pr_auc_std)
         macro_acc_score = Score(macro_acc, acc_std)
-        return roc_auc_score, pr_auc_score, macro_acc_score, micro_acc, report
+
+        scores = (roc_auc_score, pr_auc_score, macro_acc_score)
+        micro = micro_acc
+    return scores, micro, report
 
 
 def store_results(
     output_file,
-    roc_auc_score,
-    pr_auc_score,
-    macro_acc_score,
-    micro_acc,
+    scores,
+    micro,
     report,
     dataset,
+    task_type,
 ):
-    # print experimental results
-    print('ROC-AUC: ' + str(roc_auc_score.mean))
-    print('PR-AUC: ' + str(pr_auc_score.mean))
-    print('Balanced Micro Acc: ' + str(micro_acc))
-    print('Balanced Macro Acc: ' + str(macro_acc_score.mean))
-    print('Balanced Acc STD: ' + str(macro_acc_score.std))
-    print('latext format:')
-    print('{:.2f}\\pm{:.2f}'.format(micro_acc, macro_acc_score.std))
-    print('-' * 20)
+    if task_type == "regression":
+        p_corr_score, ccc_score, r2_score, adjusted_r2_score, rmse_score = scores
 
-    # store experimental results
-    with open(output_file, 'w') as to:
-        to.write('\nROC AUC: ' + str(roc_auc_score.mean))
-        to.write('\nStD: ' + str(roc_auc_score.std))
-        to.write('\nPR AUC: ' + str(pr_auc_score.mean))
-        to.write('\nStD: ' + str(pr_auc_score.std))
-        to.write('\nAcc Micro: ' + str(micro_acc))
-        to.write('\nAcc Macro: ' + str(macro_acc_score.mean))
-        to.write('\nStD: ' + str(macro_acc_score.std))
-        to.write('\n')
-        to.write('Report:\n')
-        to.write('{}\n'.format(report))
+        # print experimental results
+        print('Pearson Correlation: ' + str(p_corr_score.mean))
+        print('Pearson Correlation STD: ' + str(p_corr_score.std))
+        print('CCC: ' + str(ccc_score.mean))
+        print('CCC STD: ' + str(ccc_score.std))
+        print('R2 Score Micro: ' + str(micro["r2"]))
+        print('R2 Score Macro: ' + str(r2_score.mean))
+        print('R2 Score STD: ' + str(r2_score.std))
+        print('Adjusted R2 Score Micro: ' + str(micro["adjusted_r2"]))
+        print('Adjusted R2 Score Macro: ' + str(adjusted_r2_score.mean))
+        print('Adjusted R2 Score STD: ' + str(adjusted_r2_score.std))
+        print('RMSE Micro: ' + str(micro["rmse"]))
+        print('RMSE Macro: ' + str(rmse_score.mean))
+        print('RMSE STD: ' + str(rmse_score.std))
+        print('latext format:')
+        for i in range(len(micro["r2"])):
+            print(f'{i}: {micro["r2"][i]:.2f}\\pm{r2_score.std[i]:.2f}')
+        print('-' * 20)
+
+        # store experimental results
+        with open(output_file, 'w') as to:
+            to.write('\nPearson Correlation: ' + str(p_corr_score.mean))
+            to.write('\nStD: ' + str(p_corr_score.std))
+            to.write('\nCCC: ' + str(ccc_score.mean))
+            to.write('\nStD: ' + str(ccc_score.std))
+            to.write('\nR2 Score Micro: ' + str(micro["r2"]))
+            to.write('\nR2 Score Macro: ' + str(r2_score.mean))
+            to.write('\nStD: ' + str(r2_score.std))
+            to.write('\nAdjusted R2 Score Micro: ' + str(micro["adjusted_r2"]))
+            to.write('\nAdjusted R2 Score Macro: ' + str(adjusted_r2_score.mean))
+            to.write('\nStD: ' + str(adjusted_r2_score.std))
+            to.write('\nRMSE Micro: ' + str(micro["rmse"]))
+            to.write('\nRMSE Macro: ' + str(rmse_score.mean))
+            to.write('\nStD: ' + str(rmse_score.std))
+            to.write('\n')
+    else:
+        roc_auc_score, pr_auc_score, macro_acc_score = scores
+        micro_acc = micro
+
+        # print experimental results
+        print('ROC-AUC: ' + str(roc_auc_score.mean))
+        print('PR-AUC: ' + str(pr_auc_score.mean))
+        print('Balanced Micro Acc: ' + str(micro_acc))
+        print('Balanced Macro Acc: ' + str(macro_acc_score.mean))
+        print('Balanced Acc STD: ' + str(macro_acc_score.std))
+        print('latext format:')
+        print('{:.2f}\\pm{:.2f}'.format(micro_acc, macro_acc_score.std))
+        print('-' * 20)
+
+        # store experimental results
+        with open(output_file, 'w') as to:
+            to.write('\nROC AUC: ' + str(roc_auc_score.mean))
+            to.write('\nStD: ' + str(roc_auc_score.std))
+            to.write('\nPR AUC: ' + str(pr_auc_score.mean))
+            to.write('\nStD: ' + str(pr_auc_score.std))
+            to.write('\nAcc Micro: ' + str(micro_acc))
+            to.write('\nAcc Macro: ' + str(macro_acc_score.mean))
+            to.write('\nStD: ' + str(macro_acc_score.std))
+            to.write('\n')
+            to.write('Report:\n')
+            to.write('{}\n'.format(report))
 
     output_summary = output_file.parent.parent / 'results.json'
 
@@ -156,16 +254,35 @@ def store_results(
 
     with open(output_summary, 'w+') as fp:
         data[dataset] = defaultdict(dict)
-        data[dataset]['Accuracy Micro']['mean'] = micro_acc
-        data[dataset]['Accuracy Macro']['mean'] = macro_acc_score.mean
-        data[dataset]['Accuracy']['std'] = macro_acc_score.std
-        data[dataset]['ROC AUC']['mean'] = roc_auc_score.mean
-        data[dataset]['ROC AUC']['std'] = roc_auc_score.std
-        data[dataset]['PR AUC']['mean'] = pr_auc_score.mean
-        data[dataset]['PR AUC']['std'] = pr_auc_score.std
+        if task_type == "regression":
+            data[dataset]['R2 Micro']['mean'] = micro["r2"]
+            data[dataset]['R2 Macro']['mean'] = r2_score.mean
+            data[dataset]['R2']['std'] = r2_score.std
+            data[dataset]['Adjusted R2 Micro']['mean'] = micro["adjusted_r2"]
+            data[dataset]['Adjusted R2 Macro']['mean'] = adjusted_r2_score.mean
+            data[dataset]['Adjusted R2']['std'] = adjusted_r2_score.std
+            data[dataset]['Pearson Correlation']['mean'] = p_corr_score.mean
+            data[dataset]['Pearson Correlation']['std'] = p_corr_score.std
+            data[dataset]['CCC']['mean'] = ccc_score.mean
+            data[dataset]['CCC']['std'] = ccc_score.std
+            data[dataset]['RMSE']['mean'] = rmse_score.mean
+            data[dataset]['RMSE']['std'] = rmse_score.std   
+        else:
+            data[dataset]['Accuracy Micro']['mean'] = micro_acc
+            data[dataset]['Accuracy Macro']['mean'] = macro_acc_score.mean
+            data[dataset]['Accuracy']['std'] = macro_acc_score.std
+            data[dataset]['ROC AUC']['mean'] = roc_auc_score.mean
+            data[dataset]['ROC AUC']['std'] = roc_auc_score.std
+            data[dataset]['PR AUC']['mean'] = pr_auc_score.mean
+            data[dataset]['PR AUC']['std'] = pr_auc_score.std
 
-        json.dump(data, fp, indent=4)
+        json.dump(data, fp, indent=4, cls=NumpyEncoder)
 
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
