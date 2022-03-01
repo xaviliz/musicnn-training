@@ -62,7 +62,7 @@ def prediction(config, experiment_folder, id2audio_repr_path, id2gt, ids, is_reg
         pearson_corr = shared.compute_pearson_correlation(y_true, y_pred)
         ccc = shared.compute_ccc(y_true, y_pred)
         r2_score = shared.compute_r2_score(y_true, y_pred)
-        adjusted_r2_score = shared.compute_adjusted_r2_score(y_true, y_pred, 2)
+        adjusted_r2_score = shared.compute_adjusted_r2_score(y_true, y_pred, np.shape(y_true)[1])
         rmse = shared.compute_root_mean_squared_error(y_true, y_pred)
         mse = shared.compute_mean_squared_error(y_true, y_pred)
 
