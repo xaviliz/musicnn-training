@@ -257,16 +257,16 @@ def store_results(
         if task_type == "regression":
             data[dataset]['R2 Micro']['mean'] = micro["r2"]
             data[dataset]['R2 Macro']['mean'] = r2_score.mean
-            data[dataset]['R2']['std'] = r2_score.std
+            data[dataset]['R2 Macro']['std'] = r2_score.std
             data[dataset]['Adjusted R2 Micro']['mean'] = micro["adjusted_r2"]
             data[dataset]['Adjusted R2 Macro']['mean'] = adjusted_r2_score.mean
-            data[dataset]['Adjusted R2']['std'] = adjusted_r2_score.std
+            data[dataset]['Adjusted R2 Macro']['std'] = adjusted_r2_score.std
             data[dataset]['Pearson Correlation']['mean'] = p_corr_score.mean
             data[dataset]['Pearson Correlation']['std'] = p_corr_score.std
             data[dataset]['CCC']['mean'] = ccc_score.mean
             data[dataset]['CCC']['std'] = ccc_score.std
             data[dataset]['RMSE']['mean'] = rmse_score.mean
-            data[dataset]['RMSE']['std'] = rmse_score.std   
+            data[dataset]['RMSE']['std'] = rmse_score.std
         else:
             data[dataset]['Accuracy Micro']['mean'] = micro_acc
             data[dataset]['Accuracy Macro']['mean'] = macro_acc_score.mean
