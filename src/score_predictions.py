@@ -55,12 +55,11 @@ def score_predictions(args):
         fold_gt.append([groundtruth[k] for k in keys])
 
     task_type = config['config_train']['task_type']
-    scores, micro, report = get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds, task_type)
+    scores, report = get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds, task_type)
 
     store_results(
         results_file,
         scores,
-        micro,
         report,
         dataset,
         task_type,
@@ -129,7 +128,7 @@ def get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds, task_type):
         r2_score = Score(macro_r2, r2_std)
         adjusted_r2_score = Score(macro_adjusted_r2, adjusted_r2_std)
         rmse_score = Score(macro_rmse, rmse_std)
-        scores = (p_corr_score, ccc_score, r2_score, adjusted_r2_score, rmse_score)
+        scores = (p_corr_score, ccc_score, r2_score, adjusted_r2_score, rmse_score, micro_metrics)
         report = None
     else:
         # for classification tasks
@@ -165,39 +164,37 @@ def get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds, task_type):
         pr_auc_score = Score(pr_auc, pr_auc_std)
         macro_acc_score = Score(macro_acc, acc_std)
 
-        scores = (roc_auc_score, pr_auc_score, macro_acc_score)
-        micro_metrics = micro_acc
-    return scores, micro_metrics, report
+        scores = (roc_auc_score, pr_auc_score, macro_acc_score, micro_acc)
+    return scores, report
 
 
 def store_results(
     output_file,
     scores,
-    micro,
     report,
     dataset,
     task_type,
 ):
     if task_type == "regression":
-        p_corr_score, ccc_score, r2_score, adjusted_r2_score, rmse_score = scores
+        p_corr_score, ccc_score, r2_score, adjusted_r2_score, rmse_score, micro_metrics = scores
 
         # print experimental results
         print('Pearson Correlation: ' + str(p_corr_score.mean))
         print('Pearson Correlation STD: ' + str(p_corr_score.std))
         print('CCC: ' + str(ccc_score.mean))
         print('CCC STD: ' + str(ccc_score.std))
-        print('R2 Score Micro: ' + str(micro["r2"]))
+        print('R2 Score Micro: ' + str(micro_metrics["r2"]))
         print('R2 Score Macro: ' + str(r2_score.mean))
         print('R2 Score STD: ' + str(r2_score.std))
-        print('Adjusted R2 Score Micro: ' + str(micro["adjusted_r2"]))
+        print('Adjusted R2 Score Micro: ' + str(micro_metrics["adjusted_r2"]))
         print('Adjusted R2 Score Macro: ' + str(adjusted_r2_score.mean))
         print('Adjusted R2 Score STD: ' + str(adjusted_r2_score.std))
-        print('RMSE Micro: ' + str(micro["rmse"]))
+        print('RMSE Micro: ' + str(micro_metrics["rmse"]))
         print('RMSE Macro: ' + str(rmse_score.mean))
         print('RMSE STD: ' + str(rmse_score.std))
         print('latext format:')
-        for i in range(len(micro["r2"])):
-            print(f'{i}: {micro["r2"][i]:.2f}\\pm{r2_score.std[i]:.2f}')
+        for i in range(len(micro_metrics["r2"])):
+            print(f'{i}: {micro_metrics["r2"][i]:.2f}\\pm{r2_score.std[i]:.2f}')
         print('-' * 20)
 
         # store experimental results
@@ -206,28 +203,27 @@ def store_results(
             to.write('\nStD: ' + str(p_corr_score.std))
             to.write('\nCCC: ' + str(ccc_score.mean))
             to.write('\nStD: ' + str(ccc_score.std))
-            to.write('\nR2 Score Micro: ' + str(micro["r2"]))
+            to.write('\nR2 Score Micro: ' + str(micro_metrics["r2"]))
             to.write('\nR2 Score Macro: ' + str(r2_score.mean))
             to.write('\nStD: ' + str(r2_score.std))
-            to.write('\nAdjusted R2 Score Micro: ' + str(micro["adjusted_r2"]))
+            to.write('\nAdjusted R2 Score Micro: ' + str(micro_metrics["adjusted_r2"]))
             to.write('\nAdjusted R2 Score Macro: ' + str(adjusted_r2_score.mean))
             to.write('\nStD: ' + str(adjusted_r2_score.std))
-            to.write('\nRMSE Micro: ' + str(micro["rmse"]))
+            to.write('\nRMSE Micro: ' + str(micro_metrics["rmse"]))
             to.write('\nRMSE Macro: ' + str(rmse_score.mean))
             to.write('\nStD: ' + str(rmse_score.std))
             to.write('\n')
     else:
-        roc_auc_score, pr_auc_score, macro_acc_score = scores
-        micro_acc = micro
+        roc_auc_score, pr_auc_score, macro_acc_score, micro_metrics = scores
 
         # print experimental results
         print('ROC-AUC: ' + str(roc_auc_score.mean))
         print('PR-AUC: ' + str(pr_auc_score.mean))
-        print('Balanced Micro Acc: ' + str(micro_acc))
+        print('Balanced Micro Acc: ' + str(micro_metrics))
         print('Balanced Macro Acc: ' + str(macro_acc_score.mean))
         print('Balanced Acc STD: ' + str(macro_acc_score.std))
         print('latext format:')
-        print('{:.2f}\\pm{:.2f}'.format(micro_acc, macro_acc_score.std))
+        print('{:.2f}\\pm{:.2f}'.format(micro_metrics, macro_acc_score.std))
         print('-' * 20)
 
         # store experimental results
@@ -236,7 +232,7 @@ def store_results(
             to.write('\nStD: ' + str(roc_auc_score.std))
             to.write('\nPR AUC: ' + str(pr_auc_score.mean))
             to.write('\nStD: ' + str(pr_auc_score.std))
-            to.write('\nAcc Micro: ' + str(micro_acc))
+            to.write('\nAcc Micro: ' + str(micro_metrics))
             to.write('\nAcc Macro: ' + str(macro_acc_score.mean))
             to.write('\nStD: ' + str(macro_acc_score.std))
             to.write('\n')
@@ -254,10 +250,10 @@ def store_results(
     with open(output_summary, 'w+') as fp:
         data[dataset] = defaultdict(dict)
         if task_type == "regression":
-            data[dataset]['R2 Micro']['mean'] = micro["r2"]
+            data[dataset]['R2 Micro']['mean'] = micro_metrics["r2"]
             data[dataset]['R2 Macro']['mean'] = r2_score.mean
             data[dataset]['R2 Macro']['std'] = r2_score.std
-            data[dataset]['Adjusted R2 Micro']['mean'] = micro["adjusted_r2"]
+            data[dataset]['Adjusted R2 Micro']['mean'] = micro_metrics["adjusted_r2"]
             data[dataset]['Adjusted R2 Macro']['mean'] = adjusted_r2_score.mean
             data[dataset]['Adjusted R2 Macro']['std'] = adjusted_r2_score.std
             data[dataset]['Pearson Correlation']['mean'] = p_corr_score.mean
@@ -267,7 +263,7 @@ def store_results(
             data[dataset]['RMSE']['mean'] = rmse_score.mean
             data[dataset]['RMSE']['std'] = rmse_score.std
         else:
-            data[dataset]['Accuracy Micro']['mean'] = micro_acc
+            data[dataset]['Accuracy Micro']['mean'] = micro_metrics
             data[dataset]['Accuracy Macro']['mean'] = macro_acc_score.mean
             data[dataset]['Accuracy']['std'] = macro_acc_score.std
             data[dataset]['ROC AUC']['mean'] = roc_auc_score.mean
