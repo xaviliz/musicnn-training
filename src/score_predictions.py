@@ -70,7 +70,6 @@ def score_predictions(args):
 def get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds, task_type):
 
     if task_type == "regression":
-        # shared.type_of_groundtruth(y_true) == "continuous-multioutput":    # regression
 
         # compute micro metrics
         micro = {}
