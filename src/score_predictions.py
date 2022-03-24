@@ -72,12 +72,12 @@ def get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds, task_type):
     if task_type == "regression":
 
         # compute micro metrics
-        micro = {}
-        micro["p_corr"] = shared.compute_pearson_correlation(y_true, y_pred)
-        micro["ccc"] = shared.compute_ccc(y_true, y_pred)
-        micro["r2"] = shared.compute_r2_score(y_true, y_pred)
-        micro["adjusted_r2"] = shared.compute_adjusted_r2_score(y_true, y_pred, np.shape(y_true)[1])
-        micro["rmse"] = shared.compute_root_mean_squared_error(y_true, y_pred)
+        micro_metrics = {}
+        micro_metrics["p_corr"] = shared.compute_pearson_correlation(y_true, y_pred)
+        micro_metrics["ccc"] = shared.compute_ccc(y_true, y_pred)
+        micro_metrics["r2"] = shared.compute_r2_score(y_true, y_pred)
+        micro_metrics["adjusted_r2"] = shared.compute_adjusted_r2_score(y_true, y_pred, np.shape(y_true)[1])
+        micro_metrics["rmse"] = shared.compute_root_mean_squared_error(y_true, y_pred)
 
         p_corrs = []
         cccs = []
@@ -96,27 +96,27 @@ def get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds, task_type):
         # compute pearson correlation
         macro_p_corr = np.mean(p_corrs, axis=0)
         print("Macro Pearson Corr:", macro_p_corr)
-        print("Micro Pearson Corr:", micro["p_corr"])
+        print("Micro Pearson Corr:", micro_metrics["p_corr"])
 
         # compute ccc
         macro_ccc = np.mean(cccs, axis=0)
         print("Macro CCC:", macro_ccc)
-        print("Micro CCC:", micro["ccc"])
+        print("Micro CCC:", micro_metrics["ccc"])
 
         # compute r2 score
         macro_r2 = np.mean(r2s, axis=0)
         print("Macro R2:", macro_r2)
-        print("Micro R2:", micro["r2"])
+        print("Micro R2:", micro_metrics["r2"])
 
         # compute adjusted r2 score
         macro_adjusted_r2 = np.mean(adjusted_r2s, axis=0)
         print("Macro Adjusted R2:", macro_adjusted_r2)
-        print("Micro Adjusted R2:", micro["adjusted_r2"])
+        print("Micro Adjusted R2:", micro_metrics["adjusted_r2"])
 
         # compute RMSE
         macro_rmse = np.mean(rmses, axis=0)
         print("Macro RMSE:", macro_rmse)
-        print("Micro RMSE:", micro["rmse"])
+        print("Micro RMSE:", micro_metrics["rmse"])
 
         p_corr_std, ccc_std = np.std(p_corrs, axis=0), np.std(cccs, axis=0)
         r2_std, adjusted_r2_std = np.std(r2s, axis=0), np.std(adjusted_r2s, axis=0)
@@ -166,8 +166,8 @@ def get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds, task_type):
         macro_acc_score = Score(macro_acc, acc_std)
 
         scores = (roc_auc_score, pr_auc_score, macro_acc_score)
-        micro = micro_acc
-    return scores, micro, report
+        micro_metrics = micro_acc
+    return scores, micro_metrics, report
 
 
 def store_results(
