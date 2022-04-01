@@ -42,9 +42,13 @@ def test_get_metrics():
     fold_pred = [predicted_0, predicted_1]
     fold_gt = [groundtruth_0, groundtruth_1]
 
-    roc_auc_score, pr_auc_score, macro_acc_score, micro_acc, report = get_metrics(
-        y_true, y_pred, fold_gt, fold_pred, n_folds=2
+    task_type = "singleClass"
+    metrics, _ = get_metrics(
+        y_true, y_pred, fold_gt, fold_pred, n_folds=2, task_type=task_type
     )
+
+    roc_auc_score, pr_auc_score, macro_acc_score, micro_acc = metrics
+
     np.testing.assert_allclose(micro_acc, 0.4)
     np.testing.assert_allclose(macro_acc_score.std, 0.2)
     assert not np.isnan(roc_auc_score.mean)
@@ -92,7 +96,7 @@ def test_get_metrics_for_regression():
     fold_gt = [groundtruth_0, groundtruth_1]
 
     task_type = "regression"
-    metrics, report = get_metrics(
+    metrics, _ = get_metrics(
         y_true, y_pred, fold_gt, fold_pred, n_folds=2, task_type=task_type
     )
 
