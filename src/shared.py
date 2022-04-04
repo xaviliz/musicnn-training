@@ -3,6 +3,7 @@ from ast import literal_eval
 from datetime import datetime
 
 import numpy as np
+from scipy.stats import pearsonr
 from sklearn import metrics
 from sklearn.utils.multiclass import type_of_target
 
@@ -176,3 +177,73 @@ def compute_accuracy(y_true, y_pred):
         y_pred = np.round(np.squeeze(y_pred))
 
     return metrics.balanced_accuracy_score(y_true, y_pred)
+
+
+def compute_pearson_correlation(y_true, y_pred, axis=0):
+    print(f'computing Pearson Correlation Coefficient of {len(y_true)} elements')
+
+    mx = np.mean(y_true,axis=axis)
+    my = np.mean(y_pred,axis=axis)
+    xm, ym = y_true - mx, y_pred - my
+    r_num = np.mean(xm * ym, axis=axis)
+    r_den = np.std(xm, axis=axis) * np.std(ym, axis=axis)
+
+    return r_num / r_den
+
+
+def compute_ccc(y_true, y_pred, axis=0):
+
+    print(f'computing Concordance Correlation Coefficient of {len(y_true)} elements')
+
+    # Concordance Correlation Coefficient (CCC)
+    x_mean = np.mean(y_true, axis=axis)
+    y_mean = np.mean(y_pred, axis=axis)
+
+    x_var = np.var(y_true, axis=axis)
+    y_var = np.var(y_pred, axis=axis)
+
+    cov = np.mean((y_true - x_mean) * (y_pred - y_mean))
+
+    numerator = 2 * cov
+
+    denominator = x_var + y_var + (x_mean - y_mean) ** 2
+
+    return numerator / denominator
+
+
+# R2 score
+def compute_r2_score(y_true, y_pred, axis=0):
+
+    print(f'computing R2 Score of {len(y_true)} elements')
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+
+    ss_residual = np.sum(np.square(y_true - y_pred), axis=0)
+    ss_total = np.sum(
+        np.square(y_true - np.mean(y_true)), axis=0
+    )
+    r_squared = 1.0 - np.nan_to_num(ss_residual/ss_total)
+    return r_squared
+
+
+# Adjusted R2 score
+def compute_adjusted_r2_score(y_true, y_pred, p):
+    # p refers to the number of predictors (i.e for arousal and valence p=2)
+    print(f'computing Adjusted R2 Score of {len(y_true)} elements')
+    r_squared = compute_r2_score(y_true, y_pred)
+    adjusted_r_squared = 1 - (1 - r_squared) * (len(y_true) - 1.0) / (len(y_true) - p - 1.0)
+    return adjusted_r_squared
+
+
+def compute_root_mean_squared_error(y_true, y_pred):
+    print(f'computing Root Mean Squared Error of {len(y_true)} elements')
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+    return metrics.mean_squared_error(y_true, y_pred, multioutput="raw_values", squared=True)
+
+
+def compute_mean_squared_error(y_true, y_pred):
+    print(f'computing Mean Squared Error of {len(y_true)} elements')
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+    return metrics.mean_squared_error(y_true, y_pred, multioutput="raw_values", squared=False)

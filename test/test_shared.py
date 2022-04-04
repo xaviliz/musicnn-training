@@ -79,3 +79,149 @@ def test_compute_accuracy_multilabel():
 
     acc_multilabel = shared.compute_accuracy(y_true_ml, y_pred_ml)
     np.testing.assert_allclose(acc_multilabel, 0.5)
+
+
+def test_compute_pearson_correlation():
+
+    # defines predictions
+    y_pred_pc = [
+        [0.89, 0.11],
+        [0.32, 0.59],
+        [0.78, 0.39],
+        [0.12, 0.85],
+        [0.59, 0.73],
+    ]
+
+    # define groundtruth
+    y_true_ml = [
+        [0.92, 0.11],
+        [0.39, 0.65],
+        [0.78, 0.48],
+        [0.08, 0.86],
+        [0.63, 0.74],
+    ]
+
+    # compute p corr
+    p_corr = shared.compute_pearson_correlation(y_pred_pc, y_true_ml)
+    np.testing.assert_allclose(p_corr, [0.99259384, 0.99102183])
+
+
+def test_compute_ccc():
+
+    # defines predictions
+    y_pred_ccc = [
+        [0.81, 0.17],
+        [0.32, 0.53],
+        [0.79, 0.35],
+        [0.18, 0.81],
+        [0.52, 0.76],
+    ]
+
+    # define groundtruth
+    y_true_ccc = [
+        [0.96, 0.13],
+        [0.39, 0.65],
+        [0.73, 0.42],
+        [0.09, 0.84],
+        [0.61, 0.71],
+    ]
+
+    # compute ccc
+    ccc = shared.compute_ccc(y_pred_ccc, y_true_ccc)
+    np.testing.assert_allclose(ccc, [0.85452581, 1.06378999])
+
+
+def test_compute_r2_score():
+    # defines predictions
+    y_pred_r2 = [
+        [0.81, 0.17],
+        [0.32, 0.53],
+        [0.79, 0.35],
+        [0.18, 0.81],
+        [0.52, 0.76],
+    ]
+
+    # define groundtruth
+    y_true_r2 = [
+        [0.96, 0.13],
+        [0.39, 0.65],
+        [0.73, 0.42],
+        [0.09, 0.84],
+        [0.61, 0.71],
+    ]
+
+    # compute r2 score
+    r2_score = shared.compute_r2_score(y_pred_r2, y_true_r2)
+    np.testing.assert_allclose(r2_score, [0.84896967, 0.9170988])
+
+
+def test_compute_adjusted_r2_score():
+    # defines predictions
+    y_pred_r2 = [
+        [0.81, 0.17],
+        [0.32, 0.53],
+        [0.79, 0.35],
+        [0.18, 0.81],
+        [0.52, 0.76],
+    ]
+
+    # define groundtruth
+    y_true_r2 = [
+        [0.96, 0.13],
+        [0.39, 0.65],
+        [0.73, 0.42],
+        [0.09, 0.84],
+        [0.61, 0.71],
+    ]
+
+    # compute r2 score
+    adjusted_r2_score = shared.compute_adjusted_r2_score(y_pred_r2, y_true_r2, p=np.shape(y_true_r2)[1])
+    np.testing.assert_allclose(adjusted_r2_score, [0.69793933, 0.8341976])
+
+
+def test_compute_root_mean_squared_error():
+    # defines predictions
+    y_pred_rmse = [
+        [0.81, 0.17],
+        [0.32, 0.53],
+        [0.79, 0.35],
+        [0.18, 0.81],
+        [0.52, 0.76],
+    ]
+
+    # define groundtruth
+    y_true_rmse = [
+        [0.96, 0.13],
+        [0.39, 0.65],
+        [0.73, 0.42],
+        [0.09, 0.84],
+        [0.61, 0.71],
+    ]
+
+    # compute rmse
+    rmse = shared.compute_root_mean_squared_error(y_pred_rmse, y_true_rmse)
+    np.testing.assert_allclose(rmse, [0.00944, 0.00486])
+
+
+def test_compute_mean_squared_error():
+    # define predictions
+    y_pred_rmse = [
+        [0.81, 0.17],
+        [0.32, 0.53],
+        [0.79, 0.35],
+        [0.18, 0.81],
+        [0.52, 0.76],
+    ]
+
+    # define groundtruth
+    y_true_rmse = [
+        [0.96, 0.13],
+        [0.39, 0.65],
+        [0.73, 0.42],
+        [0.09, 0.84],
+        [0.61, 0.71],
+    ]
+
+    # compute mean squared error
+    mse = shared.compute_mean_squared_error(y_pred_rmse, y_true_rmse)
+    np.testing.assert_allclose(mse, [0.09715966, 0.0697137])
