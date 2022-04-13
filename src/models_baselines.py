@@ -3,7 +3,12 @@ tf.disable_v2_behavior()
 
 
 def perceptron(x, is_training, config):
-    x = tf.squeeze(x, axis=[1])
+    # the perceptrons operate on 2D inputs but x is 3D on training time to allow for a
+    # common setup with all the models, squeeze the input in that case. This is not required
+    # on freezing time.
+    if len(x.shape) == 3:
+        x = tf.squeeze(x, axis=[1])
+
     # x = tf.layers.dropout(x, rate=0.5, training=is_training)
     # x = tf.layers.batch_normalization(x, training=is_training)
     return tf.layers.dense(

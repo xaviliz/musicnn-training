@@ -22,17 +22,29 @@ def write_summary(value, tag, step, writer):
 
 
 def tf_define_model_and_cost(config):
-    return model_and_cost(config, tf.placeholder(tf.bool))
+    return model_and_cost(
+        config,
+        tf.placeholder(tf.float32, [None, config['xInput'], config['yInput']]),
+        tf.placeholder(tf.bool)
+    )
 
 
 def tf_define_model_and_cost_freeze(config):
-    return model_and_cost(config, False)
+    if config['xInput'] == 1:
+        shape = [None, config['yInput']]
+    else:
+        shape = [None, config['xInput'], config['yInput']]
+
+    return model_and_cost(
+        config,
+        tf.placeholder(tf.float32, shape),
+        False
+    )
 
 
-def model_and_cost(config, is_train):
+def model_and_cost(config, x, is_train):
     # tensorflow: define the model
     with tf.name_scope('model'):
-        x = tf.placeholder(tf.float32, [None, config['xInput'], config['yInput']])
         y_ = tf.placeholder(tf.float32, [None, config['num_classes_dataset']])
 
         # choose between transfer learning or fully trainable models
