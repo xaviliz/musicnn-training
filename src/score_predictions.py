@@ -4,7 +4,8 @@ from collections import defaultdict, namedtuple
 from pathlib import Path
 
 import numpy as np
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.preprocessing import normalize
 
 import shared
 
@@ -55,18 +56,19 @@ def score_predictions(args):
         fold_gt.append([groundtruth[k] for k in keys])
 
     task_type = config['config_train']['task_type']
-    scores, report = get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds, task_type)
+    scores, report, confusion_matrix = get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds, task_type, args.labels)
 
     store_results(
         results_file,
         scores,
         report,
+        confusion_matrix,
         dataset,
         task_type,
     )
 
 
-def get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds, task_type):
+def get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds, task_type, labels):
 
     if task_type == "regression":
 
@@ -130,6 +132,7 @@ def get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds, task_type):
         rmse_score = Score(macro_rmse, rmse_std)
         scores = (p_corr_score, ccc_score, r2_score, adjusted_r2_score, rmse_score, micro_metrics)
         report = None
+        cm = None
     else:
         # for classification tasks
         micro_acc = shared.compute_accuracy(y_true, y_pred)
@@ -155,23 +158,49 @@ def get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds, task_type):
         if shared.type_of_groundtruth(y_true) == "multilabel-indicator":
             y_pred_indicator = np.round(y_pred)
             report = classification_report(y_true, y_pred_indicator)
+            cm = None
         else:
             y_true_argmax = np.argmax(y_true, axis=1)
             y_pred_argmax = np.argmax(y_pred, axis=1)
             report = classification_report(y_true_argmax, y_pred_argmax)
+            separator = "    "
+            cm = np.array2string(normalize(confusion_matrix(y_true_argmax, y_pred_argmax), axis=1, norm="l1"), precision=3, separator=separator, max_line_width=200)
+            cm = cm.replace("[", "")
+            cm = cm.replace("]", "")
+            cm = cm.replace("\n ", "\n")
+
+            if labels is not None:
+                labels = np.array(labels.split("---"))
+                labels = np.array2string(labels, separator=separator)
+                labels = labels.replace("[","").replace("]","")
+                print(type(labels))
+                labels = labels.split(separator)
+                # add new column
+                cm = labels[0] + separator + cm
+                cm_parts = cm.split("\n")
+                print(cm_parts)
+                print(type(cm))
+                print(type(labels))
+                exit()
+                cm = cm.replace("   \n", "\n")
+                cm = labels[3:] + "\n" + cm
+            #cm = cm.replace(" \n", "\n")
+            #cm = cm.replace("  \n", "\n")
+            # TODO: estimate the max length in all labels and use it to stablish the size of the 0-th column.
 
         roc_auc_score = Score(roc_auc, roc_auc_std)
         pr_auc_score = Score(pr_auc, pr_auc_std)
         macro_acc_score = Score(macro_acc, acc_std)
 
         scores = (roc_auc_score, pr_auc_score, macro_acc_score, micro_acc)
-    return scores, report
+    return scores, report, cm
 
 
 def store_results(
     output_file,
     scores,
     report,
+    confusion_matrix,
     dataset,
     task_type,
 ):
@@ -238,6 +267,10 @@ def store_results(
             to.write('\n')
             to.write('Report:\n')
             to.write('{}\n'.format(report))
+            if confusion_matrix is not None:
+                to.write('Confusion Matrix:\n')
+                to.write('{}\n'.format(confusion_matrix))
+            to.write('\n')
 
     output_summary = output_file.parent.parent / 'results.json'
 
@@ -282,6 +315,14 @@ class NumpyEncoder(json.JSONEncoder):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('config_file', help='configuration file')
+    parser.add_argument(
+        "-l",
+        "--labels",
+        help="String of labels/tags with '---' as separator to build the confusion matrix.",
+        type=str,
+        required=False,
+        default=None
+    )
     args = parser.parse_args()
 
     score_predictions(args)
