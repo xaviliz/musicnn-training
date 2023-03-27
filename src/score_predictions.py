@@ -2,6 +2,7 @@ import argparse
 import json
 from collections import defaultdict, namedtuple
 from pathlib import Path
+import re
 
 import numpy as np
 from sklearn.metrics import classification_report, confusion_matrix
@@ -170,23 +171,35 @@ def get_metrics(y_true, y_pred, fold_gt, fold_pred, n_folds, task_type, labels):
             cm = cm.replace("\n ", "\n")
 
             if labels is not None:
+
+                # pre-process labels
                 labels = np.array(labels.split("---"))
-                labels = np.array2string(labels, separator=separator)
-                labels = labels.replace("[","").replace("]","")
-                print(type(labels))
-                labels = labels.split(separator)
-                # add new column
-                cm = labels[0] + separator + cm
+                labels = np.array2string(labels)
+                #labels = np.array2string(labels, separator=separator)
+                labels = labels.replace("[","").replace("]","").replace("\n", "").replace("'", "")
+                labels = labels.split(" ")
+
+                # crop labels (max 8 chars)
+                labels = [label[:8] for label in labels]
+                max_len = max([len(label) for label in labels])
+                max_width = max_len + len(separator)
+
+                # add labels in columns
                 cm_parts = cm.split("\n")
-                print(cm_parts)
-                print(type(cm))
-                print(type(labels))
-                exit()
-                cm = cm.replace("   \n", "\n")
-                cm = labels[3:] + "\n" + cm
-            #cm = cm.replace(" \n", "\n")
-            #cm = cm.replace("  \n", "\n")
-            # TODO: estimate the max length in all labels and use it to stablish the size of the 0-th column.
+                new_cm = ""
+                for n in range(len(cm_parts)):
+                    leftover = " " * (max_len - len(labels[n]))
+                    # build new row with max_width separators
+                    cm_parts[n] = re.sub(r"\s+", " ", cm_parts[n])  # remove whitespaces
+                    data_row = [part + " " * (max_width - len(part))  for part in cm_parts[n].split(" ")]
+                    new_cm += labels[n] + leftover + separator + ("").join(data_row) + "\n"
+
+                # add row on bottom with labels
+                label_row = [label + " " * (max_width - len(label))  for label in labels]
+                cm = new_cm + " " * max_width + ("").join(label_row)
+
+                print("Confusion matrix:")
+                print(cm)
 
         roc_auc_score = Score(roc_auc, roc_auc_std)
         pr_auc_score = Score(pr_auc, pr_auc_std)
