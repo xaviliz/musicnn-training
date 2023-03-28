@@ -4,6 +4,8 @@ import json
 from essentia.standard import TensorflowPredict, TensorTranspose
 from essentia import Pool
 import numpy as np
+from subprocess import run
+
 
 from feature_melspectrogram import (
     MelSpectrogramVGGish,
@@ -40,6 +42,10 @@ class EmbeddingFromMelSpectrogram:
             self.mel_extractor = MelSpectrogramVGGish()
         elif self.model_type == "openl3":
             self.mel_extractor = MelSpectrogramOpenL3(hop_time=self.hop_time)
+
+        if self.model_type == "vggish":
+            if not self.graph_path.exists():
+                self.download_vggish()
 
         params = {
             "inputs": [self.input_layer],
@@ -111,6 +117,9 @@ class EmbeddingFromMelSpectrogram:
             batch = TensorTranspose(permutation=self.config["permutation"])(batch)
         return batch
 
+    def download_vggish(self):
+        model_url = "https://essentia.upf.edu/models/feature-extractors/vggish/audioset-vggish-3.pb"
+        run(["curl", "-SLO", model_url], cwd=self.models_path, check=True)
 
 class EmbeddingFromWaveForm:
     def __init__(self, model_type, config):
